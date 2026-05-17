@@ -988,7 +988,189 @@ class ClaudeCodeCLIDriver:
         )
 
 
-_KNOWN_LLM_DRIVERS = frozenset({"codex", "claude", "claude-code", "ollama"})
+class GeminiCLIDriver:
+    """Wraps ``gemini -p`` CLI in non-interactive text-output mode."""
+
+    _TIER_DEFAULTS: dict[str, str] = {
+        "haiku": "gemini-2.5-flash",
+        "sonnet": "gemini-2.5-pro",
+        "opus": "gemini-2.5-pro",
+    }
+
+    @property
+    def name(self) -> str:
+        return "gemini"
+
+    def available(self) -> bool:
+        return shutil.which("gemini") is not None
+
+    def _model_for_tier(self, tier: ModelTier) -> str:
+        explicit = os.environ.get("AIEDGE_GEMINI_MODEL", "").strip()
+        if explicit:
+            return explicit
+        env_key = f"AIEDGE_GEMINI_MODEL_{tier.upper()}"
+        return os.environ.get(env_key, self._TIER_DEFAULTS.get(tier, "gemini-2.5-pro")).strip()
+
+    def execute(
+        self,
+        *,
+        prompt: str,
+        run_dir: Path,
+        timeout_s: float,
+        max_attempts: int = 3,
+        retryable_tokens: tuple[str, ...] = (),
+        model_tier: ModelTier = "sonnet",
+        system_prompt: str = "",
+        temperature: float | None = None,
+    ) -> LLMDriverResult:
+        if not self.available():
+            return LLMDriverResult(
+                status="missing_cli",
+                stdout="",
+                stderr="gemini executable not found",
+                argv=[],
+                attempts=[],
+                returncode=-1,
+            )
+
+        effective_prompt = (
+            f"[System instructions]\n{system_prompt}\n\n[User prompt]\n{prompt}"
+            if system_prompt
+            else prompt
+        )
+        model = self._model_for_tier(model_tier)
+        approval_mode = os.environ.get("AIEDGE_GEMINI_APPROVAL_MODE", "plan").strip() or "plan"
+        base_argv = [
+            "gemini",
+            "--model",
+            model,
+            "--prompt",
+            effective_prompt,
+            "--output-format",
+            "text",
+            "--approval-mode",
+            approval_mode,
+        ]
+        if os.environ.get("AIEDGE_GEMINI_SKIP_TRUST", "1").strip().lower() not in {"0", "false", "no"}:
+            base_argv.append("--skip-trust")
+        if os.environ.get("AIEDGE_GEMINI_INCLUDE_RUN_DIR", "0").strip().lower() in {"1", "true", "yes"}:
+            base_argv.extend(["--include-directories", str(run_dir)])
+        # Gemini CLI supports temperature in some versions via config rather than
+        # a stable CLI flag. Accept the protocol field but do not stringify an
+        # unsupported flag into argv.
+        _ = temperature
+
+        attempts: list[dict[str, object]] = []
+        for attempt_idx in range(max(1, max_attempts)):
+            try:
+                cp = subprocess.run(
+                    base_argv,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_s,
+                    stdin=subprocess.DEVNULL,
+                    cwd=str(run_dir),
+                )
+                attempts.append(
+                    {
+                        "argv": list(base_argv),
+                        "returncode": int(cp.returncode),
+                        "stdout": cp.stdout or "",
+                        "stderr": cp.stderr or "",
+                        "model": model,
+                    }
+                )
+            except subprocess.TimeoutExpired as exc:
+                attempts.append(
+                    {
+                        "argv": list(base_argv),
+                        "returncode": -1,
+                        "stdout": (exc.stdout if isinstance(exc.stdout, str) else "") or "",
+                        "stderr": (exc.stderr if isinstance(exc.stderr, str) else "") or "",
+                        "exception": "TimeoutExpired",
+                        "model": model,
+                    }
+                )
+                if attempt_idx + 1 < max_attempts:
+                    continue
+                return LLMDriverResult(
+                    status="timeout",
+                    stdout="",
+                    stderr=f"gemini CLI timed out after {timeout_s}s",
+                    argv=list(base_argv),
+                    attempts=attempts,
+                    returncode=-1,
+                )
+            except FileNotFoundError:
+                return LLMDriverResult(
+                    status="missing_cli",
+                    stdout="",
+                    stderr="gemini executable not found",
+                    argv=list(base_argv),
+                    attempts=attempts,
+                    returncode=-1,
+                )
+            except Exception as exc:
+                return LLMDriverResult(
+                    status="error",
+                    stdout="",
+                    stderr=f"{type(exc).__name__}: {exc}",
+                    argv=list(base_argv),
+                    attempts=attempts,
+                    returncode=-1,
+                )
+
+            if cp.returncode == 0:
+                return LLMDriverResult(
+                    status="ok",
+                    stdout=cp.stdout or "",
+                    stderr=cp.stderr or "",
+                    argv=list(base_argv),
+                    attempts=attempts,
+                    returncode=0,
+                )
+
+            combined_lc = "\n".join((cp.stdout or "", cp.stderr or "")).lower()
+            retryable = any(token in combined_lc for token in retryable_tokens) or any(
+                token in combined_lc
+                for token in (
+                    "overloaded",
+                    "rate",
+                    "429",
+                    "500",
+                    "502",
+                    "503",
+                    "timeout",
+                    "econnreset",
+                    "connection reset",
+                )
+            )
+            if retryable and attempt_idx + 1 < max_attempts:
+                time.sleep(2**attempt_idx)
+                continue
+
+            return LLMDriverResult(
+                status="nonzero_exit",
+                stdout=cp.stdout or "",
+                stderr=cp.stderr or "",
+                argv=list(base_argv),
+                attempts=attempts,
+                returncode=int(cp.returncode),
+            )
+
+        last = attempts[-1] if attempts else {}
+        return LLMDriverResult(
+            status="error",
+            stdout=str(last.get("stdout", "")),
+            stderr=str(last.get("stderr", "exhausted attempts")),
+            argv=list(base_argv),
+            attempts=attempts,
+            returncode=-1,
+        )
+
+
+_KNOWN_LLM_DRIVERS = frozenset({"codex", "claude", "claude-code", "gemini", "ollama"})
 
 
 def resolve_driver() -> LLMDriver:
@@ -998,6 +1180,8 @@ def resolve_driver() -> LLMDriver:
         return ClaudeAPIDriver()
     if driver_name == "claude-code":
         return ClaudeCodeCLIDriver()
+    if driver_name == "gemini":
+        return GeminiCLIDriver()
     if driver_name == "ollama":
         return OllamaDriver()
     if driver_name not in _KNOWN_LLM_DRIVERS:

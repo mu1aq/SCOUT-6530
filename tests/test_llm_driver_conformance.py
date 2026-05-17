@@ -1,11 +1,11 @@
 """LLM driver conformance suite (PR #5).
 
-Verifies that all 4 drivers correctly forward system_prompt and temperature,
+Verifies that all 5 drivers correctly forward system_prompt and temperature,
 and report failures via the documented classification (quota_exhausted,
 driver_unavailable, driver_nonzero_exit).
 
 Externally-facing claim: 'SCOUT supports system_prompt and temperature on all
-4 driver backends (Codex CLI, Claude API, Claude Code CLI, Ollama).'
+5 driver backends (Codex CLI, Claude API, Claude Code CLI, Gemini CLI, Ollama).'
 This file is the test that backs that claim.
 
 Known gaps (documented, not fixed here):
@@ -14,6 +14,8 @@ Known gaps (documented, not fixed here):
   mechanism, and temperature cannot be encoded there.
 - ClaudeCodeCLIDriver: same situation — temperature is accepted but not
   forwarded. The `claude -p` CLI exposes no temperature flag.
+- GeminiCLIDriver: same situation — temperature is accepted but not forwarded
+  because the CLI does not expose a stable non-interactive temperature flag.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from aiedge.llm_driver import (
     ClaudeAPIDriver,
     ClaudeCodeCLIDriver,
     CodexCLIDriver,
+    GeminiCLIDriver,
     LLMDriverResult,
     OllamaDriver,
     classify_llm_failure,
@@ -1011,12 +1014,12 @@ class TestClaudeCodeCLIDriverConformance:
 
 
 class TestCrossDriverProtocolConformance:
-    """All 4 drivers must conform to the LLMDriver Protocol signature."""
+    """All 5 drivers must conform to the LLMDriver Protocol signature."""
 
     @pytest.mark.parametrize(
         "driver_class",
-        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, OllamaDriver],
-        ids=["codex", "claude-api", "claude-code", "ollama"],
+        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, GeminiCLIDriver, OllamaDriver],
+        ids=["codex", "claude-api", "claude-code", "gemini", "ollama"],
     )
     def test_execute_signature_has_system_prompt(self, driver_class: type) -> None:
         """execute() must accept system_prompt as a keyword argument."""
@@ -1027,8 +1030,8 @@ class TestCrossDriverProtocolConformance:
 
     @pytest.mark.parametrize(
         "driver_class",
-        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, OllamaDriver],
-        ids=["codex", "claude-api", "claude-code", "ollama"],
+        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, GeminiCLIDriver, OllamaDriver],
+        ids=["codex", "claude-api", "claude-code", "gemini", "ollama"],
     )
     def test_execute_signature_has_temperature(self, driver_class: type) -> None:
         """execute() must accept temperature as a keyword argument."""
@@ -1039,8 +1042,8 @@ class TestCrossDriverProtocolConformance:
 
     @pytest.mark.parametrize(
         "driver_class",
-        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, OllamaDriver],
-        ids=["codex", "claude-api", "claude-code", "ollama"],
+        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, GeminiCLIDriver, OllamaDriver],
+        ids=["codex", "claude-api", "claude-code", "gemini", "ollama"],
     )
     def test_execute_signature_has_model_tier(self, driver_class: type) -> None:
         """execute() must accept model_tier as a keyword argument."""
@@ -1051,8 +1054,8 @@ class TestCrossDriverProtocolConformance:
 
     @pytest.mark.parametrize(
         "driver_class",
-        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, OllamaDriver],
-        ids=["codex", "claude-api", "claude-code", "ollama"],
+        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, GeminiCLIDriver, OllamaDriver],
+        ids=["codex", "claude-api", "claude-code", "gemini", "ollama"],
     )
     def test_name_property_is_string(self, driver_class: type) -> None:
         """name property must return a non-empty string."""
@@ -1062,8 +1065,8 @@ class TestCrossDriverProtocolConformance:
 
     @pytest.mark.parametrize(
         "driver_class",
-        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, OllamaDriver],
-        ids=["codex", "claude-api", "claude-code", "ollama"],
+        [CodexCLIDriver, ClaudeAPIDriver, ClaudeCodeCLIDriver, GeminiCLIDriver, OllamaDriver],
+        ids=["codex", "claude-api", "claude-code", "gemini", "ollama"],
     )
     def test_available_returns_bool(
         self, driver_class: type, monkeypatch: pytest.MonkeyPatch

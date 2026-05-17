@@ -8,6 +8,7 @@ import pytest
 
 from aiedge.llm_driver import (
     CodexCLIDriver,
+    GeminiCLIDriver,
     LLMDriverResult,
     classify_llm_failure,
     resolve_driver,
@@ -305,6 +306,12 @@ class TestResolveDriver:
         driver = resolve_driver()
         assert isinstance(driver, CodexCLIDriver)
 
+    def test_explicit_gemini(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AIEDGE_LLM_DRIVER", "gemini")
+        driver = resolve_driver()
+        assert isinstance(driver, GeminiCLIDriver)
+        assert driver.name == "gemini"
+
     def test_unknown_falls_back_to_codex(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AIEDGE_LLM_DRIVER", "unknown_provider")
         driver = resolve_driver()
@@ -318,6 +325,79 @@ class TestLLMDriverResult:
         )
         with pytest.raises(AttributeError):
             result.status = "error"  # type: ignore[misc]
+
+
+class TestGeminiCLIDriver:
+    def test_available_when_gemini_in_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/gemini" if cmd == "gemini" else None)
+        assert GeminiCLIDriver().available() is True
+
+    def test_not_available_when_gemini_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda cmd: None)
+        assert GeminiCLIDriver().available() is False
+
+    def test_success_uses_headless_text_mode_and_plan_approval(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/gemini" if cmd == "gemini" else None)
+        captured: dict[str, object] = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            captured["kwargs"] = kwargs
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="gemini output", stderr="")
+
+        monkeypatch.setattr("subprocess.run", fake_run)
+        result = GeminiCLIDriver().execute(
+            prompt="analyse firmware",
+            run_dir=tmp_path,
+            timeout_s=30.0,
+            max_attempts=1,
+            system_prompt="Output JSON only.",
+        )
+
+        assert result.status == "ok"
+        assert result.stdout == "gemini output"
+        cmd = captured["cmd"]
+        assert isinstance(cmd, list)
+        assert cmd[:1] == ["gemini"]
+        assert "--prompt" in cmd
+        prompt_arg = cmd[cmd.index("--prompt") + 1]
+        assert "[System instructions]" in prompt_arg
+        assert "Output JSON only." in prompt_arg
+        assert "analyse firmware" in prompt_arg
+        assert "--output-format" in cmd
+        assert cmd[cmd.index("--output-format") + 1] == "text"
+        assert "--approval-mode" in cmd
+        assert cmd[cmd.index("--approval-mode") + 1] == "plan"
+        assert "--skip-trust" in cmd
+        kwargs = captured["kwargs"]
+        assert isinstance(kwargs, dict)
+        assert kwargs.get("cwd") == str(tmp_path)
+
+    def test_retries_on_rate_limit(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/gemini" if cmd == "gemini" else None)
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        call_count = 0
+
+        def fake_run(cmd, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return subprocess.CompletedProcess(args=cmd, returncode=1, stdout="429 rate", stderr="")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
+
+        monkeypatch.setattr("subprocess.run", fake_run)
+        result = GeminiCLIDriver().execute(
+            prompt="test",
+            run_dir=tmp_path,
+            timeout_s=30.0,
+            max_attempts=2,
+        )
+
+        assert result.status == "ok"
+        assert call_count == 2
+        assert len(result.attempts) == 2
 
 
 class TestClassifyLlmFailure:

@@ -448,7 +448,7 @@ PYTHONPATH=src python3 scripts/analyze_findings.py \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AIEDGE_LLM_DRIVER` | `codex` | LLM provider: `codex` / `claude` / `claude-code` / `ollama` |
+| `AIEDGE_LLM_DRIVER` | `codex` | LLM provider: `codex` / `claude` / `claude-code` / `gemini` / `ollama` |
 | `ANTHROPIC_API_KEY` | -- | API key for Claude driver (not needed for `claude-code`) |
 | `AIEDGE_OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
 | `AIEDGE_LLM_BUDGET_USD` | -- | LLM cost budget limit |

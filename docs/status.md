@@ -51,7 +51,7 @@ Phase 2A run.py decomposition: 4,476 → 4,140 lines (normalize/stage_executor/r
 - **Init 서비스 감사** (`init_analysis.py`): SysV, systemd, BusyBox inittab, OpenWrt procd, xinetd/inetd 파싱. telnet(HIGH), FTP/TFTP(MEDIUM), UPnP/SNMP(MEDIUM) 위험 서비스 플래그.
 - **파일 퍼미션 감사** (`fs_permissions.py`): world-writable, SUID/SGID, 민감 파일(shadow, 개인키) 과도한 권한 감지.
 - **MCP 서버** (`mcp_server.py`): JSON-RPC 2.0 over stdio, 12개 도구 노출. `./scout mcp --project-id <run_id>`. Claude Code/Desktop 등 MCP 호환 AI 에이전트에서 SCOUT 구동 가능.
-- **LLM 드라이버 확장**: `ClaudeAPIDriver` (Claude API 직접 호출, `ANTHROPIC_API_KEY`) + `OllamaDriver` (로컬 LLM, `AIEDGE_OLLAMA_URL`). `AIEDGE_LLM_DRIVER=codex|claude|ollama`. 비용 추적 (`llm_cost.py`, `AIEDGE_LLM_BUDGET_USD`).
+- **LLM 드라이버 확장**: `ClaudeAPIDriver` (Claude API 직접 호출, `ANTHROPIC_API_KEY`) + `ClaudeCodeCLIDriver` + `GeminiCLIDriver` (로컬 CLI/OAuth) + `OllamaDriver` (로컬 LLM, `AIEDGE_OLLAMA_URL`). `AIEDGE_LLM_DRIVER=codex|claude|claude-code|gemini|ollama`. 비용 추적 (`llm_cost.py`, `AIEDGE_LLM_BUDGET_USD`).
 - **CVE Reachability 분석** (`reachability.py`): communication graph BFS로 공격 표면에서 CVE 컴포넌트까지 도달성 판정. directly_reachable(≤2 hop), potentially_reachable(3+), unreachable.
 - **펌웨어 비교** (`firmware_diff.py`): 두 run 간 파일시스템 diff(추가/삭제/수정/퍼미션), 바이너리 hardening diff, config 보안 diff.
 - **GDB RSP 클라이언트** (`emulation_gdb.py`): 순수 stdlib GDB Remote Serial Protocol 클라이언트. QEMU `-g` stub에 연결하여 레지스터/메모리 읽기, 브레이크포인트, 백트레이스.

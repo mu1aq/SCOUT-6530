@@ -448,7 +448,7 @@ PYTHONPATH=src python3 scripts/analyze_findings.py \
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `AIEDGE_LLM_DRIVER` | `codex` | LLM 제공자: `codex` / `claude` / `claude-code` / `ollama` |
+| `AIEDGE_LLM_DRIVER` | `codex` | LLM 제공자: `codex` / `claude` / `claude-code` / `gemini` / `ollama` |
 | `ANTHROPIC_API_KEY` | -- | Claude 드라이버 API 키 (`claude-code`는 불필요) |
 | `AIEDGE_OLLAMA_URL` | `http://localhost:11434` | Ollama 서버 URL |
 | `AIEDGE_LLM_BUDGET_USD` | -- | LLM 비용 예산 한도 |
