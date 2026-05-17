@@ -2,6 +2,17 @@
 
 이 문서는 "현재 구현 상태"를 솔직하게 기록합니다.
 
+
+## v2.7.3 업데이트 (2026-05-18, Universal Chaining + ER605 Comexe DDNS quality)
+
+- `exploitability_dossier`: ER605/Comexe DDNS parser 후보 감지 추가. `cmxddnsd`, Comexe server marker, `Data`, `ErrorCode`, `UpdateSvr1/2`, parser sink marker 기반으로 `comexe_ddns_protocol` family와 `dns_mitm` / `udp_ddns_response` / `parser_field` / `info_leak_then_control` channel을 산출.
+- `exploit_state_machine`: dossier family 보존 및 Comexe 후보를 `classify_ddns_protocol_chain_quality` Plan IR로 lowering.
+- `exploit_autopoc`: duplicate candidate ID 선택 방지, protocol-aware Plan IR fallback.
+- `poc_templates`: non-weaponized Comexe DDNS blueprint template 추가. 안전한 field blueprint hash와 quality checklist만 기록하며 overlong field/ROP/command/DES key recovery/spoofing server는 생성하지 않음.
+- `exploit_runner`: Plan IR 기반 `transition_evidence[]` 유지.
+- 문서: `docs/er605_poc_quality.md`, `docs/exploit_dag_contract.md`, `HANDOFF_UNIVERSAL_CHAINING.md`, README/README.ko/CHANGELOG 갱신.
+- 검증: targeted regression, ER605 artifact E2E subset, full `PYTHONPATH=src pytest -q`, gnosis lint/sync/strict build.
+
 ## Phase 2A run.py 분해 현황
 
 Phase 2A run.py decomposition: 4,476 → 4,140 lines (normalize/stage_executor/report_assembler/handoff_writer 추출 완료). 나머지 분해는 후속 작업.

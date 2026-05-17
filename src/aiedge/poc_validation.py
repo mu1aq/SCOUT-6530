@@ -19,6 +19,10 @@ _REASON_SCOPE_NOT_LAB_ONLY = "POLICY_SCOPE_NOT_LAB_ONLY"
 _REASON_ATTESTATION_NOT_AUTHORIZED = "POLICY_ATTESTATION_NOT_AUTHORIZED"
 _REASON_PREREQ_STAGE_ARTIFACT_MISSING = "POLICY_PREREQ_STAGE_ARTIFACT_MISSING"
 _REASON_NON_WEAPONIZED_ONLY = "POLICY_NON_WEAPONIZED_BOUNDED_CHECKS_ONLY"
+_REASON_REPRODUCIBILITY_NO_SUCCESS = (
+    "POLICY_REPRODUCIBILITY_NO_SUCCESSFUL_ATTEMPTS"
+)
+_ALLOWED_PROOF_TYPES = frozenset({"shell", "arbitrary_read", "arbitrary_write"})
 
 
 def _read_manifest(run_dir: Path) -> dict[str, object] | None:
@@ -149,12 +153,25 @@ def _validate_poc_reproducibility(
             )
             continue
 
-        # Extract readback_hash values from proof_evidence strings
+        # Extract readback_hash values from successful proof attempts only.
+        # A failed probe can still emit a stable readback hash (for example a
+        # deterministic "connection refused" string). Treating that as
+        # reproducible exploit evidence would overstate exploitability, so the
+        # pass status is part of the reproducibility contract.
         hashes: list[str] = []
+        observed_attempts = 0
+        successful_attempts = 0
         for attempt_any in attempts[:max_reruns]:
             if not isinstance(attempt_any, dict):
                 continue
             attempt = cast(dict[str, object], attempt_any)
+            observed_attempts += 1
+            if attempt.get("status") != "pass":
+                continue
+            proof_type = str(attempt.get("proof_type", ""))
+            if proof_type not in _ALLOWED_PROOF_TYPES:
+                continue
+            successful_attempts += 1
             evidence_str = str(attempt.get("proof_evidence", ""))
             # Parse readback_hash=<value> from evidence string
             for token in evidence_str.split():
@@ -163,6 +180,18 @@ def _validate_poc_reproducibility(
                     if hash_val and hash_val != "none":
                         hashes.append(hash_val)
                     break
+
+        if successful_attempts == 0:
+            results.append(
+                {
+                    "chain_id": chain_id,
+                    "status": "failed",
+                    "result_code": _REASON_REPRODUCIBILITY_NO_SUCCESS,
+                    "attempts_checked": observed_attempts,
+                    "note": "No successful proof attempts were present in the evidence bundle.",
+                }
+            )
+            continue
 
         if not hashes:
             results.append(

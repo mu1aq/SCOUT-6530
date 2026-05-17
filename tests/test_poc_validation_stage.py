@@ -194,6 +194,70 @@ def test_poc_validation_resolves_run_dir_symlinks(tmp_path: Path) -> None:
     assert validation_obj.get("status") == "ok"
 
 
+def test_poc_validation_does_not_count_failed_hashes_as_reproducible(
+    tmp_path: Path,
+) -> None:
+    fw = _write_firmware(tmp_path)
+    info = create_run(
+        str(fw),
+        case_id="case-poc-failed-hash-not-repro",
+        ack_authorization=True,
+        runs_root=tmp_path / "runs",
+    )
+    _set_profile_exploit(info.manifest_path)
+
+    prereq_rep = run_subset(
+        info,
+        ["exploit_gate", "exploit_chain"],
+        time_budget_s=5,
+        no_llm=True,
+    )
+    assert prereq_rep.status in ("ok", "partial")
+
+    bundle_dir = info.run_dir / "exploits" / "chain_failed_hash"
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    _ = (bundle_dir / "evidence_bundle.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "exploit-evidence-v1",
+                "chain_id": "failed_hash",
+                "attempts": [
+                    {
+                        "attempt": i,
+                        "status": "fail",
+                        "reason_code": "attempt_fail",
+                        "proof_type": "none",
+                        "proof_evidence": "readback_hash=same-failure-hash",
+                    }
+                    for i in range(1, 4)
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rep = run_subset(info, ["poc_validation"], time_budget_s=5, no_llm=True)
+    assert rep.status in ("ok", "partial")
+
+    validation_json = info.run_dir / "stages" / "poc_validation" / "poc_validation.json"
+    validation_obj = cast(
+        dict[str, object], json.loads(validation_json.read_text(encoding="utf-8"))
+    )
+    assert validation_obj.get("status") == "ok"
+    assert validation_obj.get("verification_reason_codes") == []
+    repro = cast(list[object], validation_obj.get("reproducibility"))
+    assert repro
+    first = cast(dict[str, object], repro[0])
+    assert first.get("status") == "failed"
+    assert (
+        first.get("result_code")
+        == "POLICY_REPRODUCIBILITY_NO_SUCCESSFUL_ATTEMPTS"
+    )
+
+
 def test_exploit_policy_scans_poc_validation_artifacts(tmp_path: Path) -> None:
     fw = _write_firmware(tmp_path)
     info = create_run(

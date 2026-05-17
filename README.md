@@ -16,7 +16,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Stages](https://img.shields.io/badge/Pipeline-47_Stages-blueviolet?style=for-the-badge)]()
 [![Zero Deps](https://img.shields.io/badge/Dependencies-Zero_(stdlib)-orange?style=for-the-badge)]()
-[![Version](https://img.shields.io/badge/Version-2.7.2-red?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-2.7.3-red?style=for-the-badge)]()
 
 [![SARIF](https://img.shields.io/badge/SARIF-2.1.0-blue?style=for-the-badge&logo=github)]()
 [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX_1.6+VEX-brightgreen?style=for-the-badge)]()
@@ -43,6 +43,13 @@
 
 > [!NOTE]
 > **Tier 1 numbers in this README now reflect the fresh v2.6.1 corpus refresh** (`docs/carry_over_benchmark_v2.6.md`): 1,123 targets, **1110 success / 4 partial / 9 fatal**. Tier 2 LLM numbers are still carry-over (`v2.3.0`, 36 firmware) until the pair-eval lane lands. See [`docs/benchmark_governance.md`](docs/benchmark_governance.md), [`docs/carry_over_benchmark_v2.6.md`](docs/carry_over_benchmark_v2.6.md), and [`benchmarks/baselines/v2.5.0/manifest.json`](benchmarks/baselines/v2.5.0/manifest.json).
+
+> [!TIP]
+> **What's new in v2.7.3** (Universal Chaining + ER605 Comexe DDNS quality pass)
+> - **ER605/Comexe DDNS chain modeling.** `exploitability_dossier` now recognizes `cmxddnsd` candidates using Comexe server names, `Data`, `ErrorCode`, `UpdateSvr1/2`, and parser sink markers, then emits `dns_mitm`, `udp_ddns_response`, `parser_field`, and `info_leak_then_control` channels.
+> - **Protocol-aware Plan IR and AutoPoC selection.** `exploit_state_machine` preserves dossier families and lowers Comexe candidates to `classify_ddns_protocol_chain_quality`; AutoPoC avoids duplicate candidate IDs across dossier/state-machine sources.
+> - **Non-weaponized DDNS blueprint template.** `poc_templates.py` adds a Comexe DDNS quality template that records safe packet/Plan-IR hashes and quality checks without generating overlong fields, ROP, command payloads, DES key recovery, or spoofing infrastructure.
+> - **PoC quality review documented.** See [`docs/er605_poc_quality.md`](docs/er605_poc_quality.md) for the quality assessment against the public ER605 analysis and the remaining live-lab verifier gaps.
 
 > [!TIP]
 > **What's new in v2.7.2** (Phase 2C++ detection-engine integrity patch — no scorecard movement expected)

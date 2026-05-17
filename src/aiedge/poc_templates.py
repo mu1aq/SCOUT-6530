@@ -15,6 +15,8 @@ class PoCContext:
     evidence_refs: list[str]
     families: list[str]
     crash_replay: dict[str, object] | None = None
+    channels: list[dict[str, object]] | None = None
+    plan_ir: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -628,9 +630,245 @@ def _generate_memory_stateful_probe(ctx: PoCContext) -> str:
     )
 
 
+def _generate_config_state_machine_probe(ctx: PoCContext) -> str:
+    chain_literal = json.dumps(ctx.chain_id)
+    service_literal = json.dumps(ctx.target_service)
+    candidate_literal = json.dumps(ctx.candidate_id)
+    summary_literal = json.dumps(ctx.candidate_summary)
+    channels_literal = repr(ctx.channels or [])
+    plan_ir_literal = repr(ctx.plan_ir or {})
+    return textwrap.dedent(
+        f"""\
+        from __future__ import annotations
+
+        import hashlib
+        import http.client
+        import json
+        import urllib.parse
+        from datetime import datetime, timezone
+
+
+        class PoCResult:
+            def __init__(self, success: bool, proof_type: str, proof_evidence: str, timestamp: str) -> None:
+                self.success = success
+                self.proof_type = proof_type
+                self.proof_evidence = proof_evidence
+                self.timestamp = timestamp
+
+
+        def _utc_now() -> str:
+            return datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+        class PoC:
+            chain_id = {chain_literal}
+            target_service = {service_literal}
+            _CHANNELS = {channels_literal}
+            _PLAN_IR = {plan_ir_literal}
+
+            def setup(self, target_ip: str, target_port: int, *, context: dict[str, object]) -> None:
+                self.target_ip = target_ip
+                self.target_port = target_port
+                self.context = context
+
+            def _channel_targets(self) -> list[str]:
+                targets = []
+                for channel in self._CHANNELS:
+                    if not isinstance(channel, dict):
+                        continue
+                    target = str(channel.get("target", "")).strip()
+                    ctype = str(channel.get("channel_type", "")).strip()
+                    if ctype == "web_api" and target.startswith("/"):
+                        targets.append(target)
+                if not targets:
+                    targets.extend(["/cgi-bin/apply", "/cgi-bin/config", "/api/config"])
+                return targets[:5]
+
+            def _write_channel(self, path: str, marker: str) -> tuple[int, bytes, str]:
+                field = "interface"
+                for channel in self._CHANNELS:
+                    if isinstance(channel, dict) and str(channel.get("channel_type")) == "config":
+                        target = str(channel.get("target", "")).strip()
+                        if target and target != "unknown":
+                            field = target
+                            break
+                body = urllib.parse.urlencode({{field: marker, "scout_probe": marker}})
+                headers = {{"Content-Type": "application/x-www-form-urlencoded", "Connection": "close"}}
+                conn = http.client.HTTPConnection(self.target_ip, int(self.target_port), timeout=3.0)
+                conn.request("POST", path, body=body, headers=headers)
+                resp = conn.getresponse()
+                data = resp.read(4096)
+                status = int(resp.status)
+                conn.close()
+                return status, data, field
+
+            def _trigger_event(self) -> None:
+                # Non-destructive trigger placeholder: the write request itself often
+                # dispatches parser logic; a lab harness can map this to a reload endpoint.
+                return
+
+            def execute(self) -> PoCResult:
+                timestamp = _utc_now()
+                marker = "SCOUT_PROOF"
+                evidence_prefix = (
+                    "autopoc_mode=deterministic_nonweaponized "
+                    + "candidate_id="
+                    + {candidate_literal}
+                    + " summary="
+                    + {summary_literal}
+                    + " probe=config_state_machine"
+                )
+                plan_digest = hashlib.sha256(json.dumps(self._PLAN_IR, sort_keys=True).encode()).hexdigest()
+                for path in self._channel_targets():
+                    try:
+                        status, body, field = self._write_channel(path, marker)
+                        self._trigger_event()
+                        digest = hashlib.sha256(body).hexdigest()
+                        evidence = (
+                            evidence_prefix
+                            + f" port={{self.target_port}} path={{path}} field={{field}} status={{status}}"
+                            + f" bytes={{len(body)}} readback_hash={{digest}} plan_hash={{plan_digest}}"
+                        )
+                        if marker.encode() in body:
+                            return PoCResult(True, "arbitrary_write", evidence, timestamp)
+                    except Exception:
+                        continue
+                evidence = (
+                    evidence_prefix
+                    + f" port={{self.target_port}} bytes=0 readback_hash=none"
+                    + f" plan_hash={{plan_digest}} result=no_config_state_machine_proof"
+                )
+                return PoCResult(False, "arbitrary_write", evidence, timestamp)
+
+            def cleanup(self) -> None:
+                return
+        """
+    )
+
+
+def _generate_comexe_ddns_protocol_probe(ctx: PoCContext) -> str:
+    chain_literal = json.dumps(ctx.chain_id)
+    service_literal = json.dumps(ctx.target_service)
+    candidate_literal = json.dumps(ctx.candidate_id)
+    summary_literal = json.dumps(ctx.candidate_summary)
+    channels_literal = repr(ctx.channels or [])
+    plan_ir_literal = repr(ctx.plan_ir or {})
+    return textwrap.dedent(
+        f"""\
+        from __future__ import annotations
+
+        import base64
+        import hashlib
+        import json
+        from datetime import datetime, timezone
+
+
+        class PoCResult:
+            def __init__(self, success: bool, proof_type: str, proof_evidence: str, timestamp: str) -> None:
+                self.success = success
+                self.proof_type = proof_type
+                self.proof_evidence = proof_evidence
+                self.timestamp = timestamp
+
+
+        def _utc_now() -> str:
+            return datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+        class PoC:
+            chain_id = {chain_literal}
+            target_service = {service_literal}
+            _CHANNELS = {channels_literal}
+            _PLAN_IR = {plan_ir_literal}
+            _QUALITY_CHECKS = [
+                "models_ddns_server_spoofing_not_inbound_router_socket",
+                "keeps_fields_short_and_non_overlong",
+                "records_custom_base64_des_as_protocol_gap_without_reimplementing_payload",
+                "requires_leak_before_control_flow_claim",
+                "requires_live_lab_pcap_for_dynamic_upgrade",
+            ]
+
+            def setup(self, target_ip: str, target_port: int, *, context: dict[str, object]) -> None:
+                self.target_ip = target_ip
+                self.target_port = target_port
+                self.context = context
+
+            def _safe_inner_fields(self) -> bytes:
+                # Short benign field blueprint only. 0x01 is the Comexe-style
+                # field delimiter observed by analysis; no overlong ErrorCode
+                # or ROP/control payload is generated here.
+                fields = [
+                    b"OK=0",
+                    b"MSG=SCOUT_PROBE",
+                    b"ErrorCode=7",
+                    b"UpdateSvr1=scout.invalid",
+                ]
+                return b"\\x01".join(fields)
+
+            def _safe_outer_blueprint(self) -> bytes:
+                inner = self._safe_inner_fields()
+                encoded = base64.b64encode(inner)
+                return b"Data=" + encoded + b"\\x01"
+
+            def execute(self) -> PoCResult:
+                timestamp = _utc_now()
+                packet = self._safe_outer_blueprint()
+                packet_hash = hashlib.sha256(packet).hexdigest()
+                plan_hash = hashlib.sha256(json.dumps(self._PLAN_IR, sort_keys=True).encode()).hexdigest()
+                channel_count = len(self._CHANNELS) if isinstance(self._CHANNELS, list) else 0
+                evidence = (
+                    "autopoc_mode=deterministic_nonweaponized "
+                    + "candidate_id="
+                    + {candidate_literal}
+                    + " summary="
+                    + {summary_literal}
+                    + " probe=comexe_ddns_protocol_blueprint"
+                    + f" target={{self.target_ip}}:{{self.target_port}}"
+                    + f" safe_packet_bytes={{len(packet)}} readback_hash={{packet_hash}}"
+                    + f" plan_hash={{plan_hash}} channel_count={{channel_count}}"
+                    + " result=blueprint_only_no_network_send"
+                    + " quality_checks="
+                    + ",".join(self._QUALITY_CHECKS)
+                )
+                return PoCResult(False, "protocol_blueprint", evidence, timestamp)
+
+            def cleanup(self) -> None:
+                return
+        """
+    )
+
+
 # ---------------------------------------------------------------------------
 # Register built-in templates
 # ---------------------------------------------------------------------------
+
+register_template(
+    PoCTemplate(
+        vuln_type="comexe_ddns_protocol",
+        families=frozenset({
+            "comexe_ddns_protocol",
+            "ddns_response_parser",
+            "protocol_spoofing_required",
+            "info_leak_chain_candidate",
+            "bounded_protocol_probe",
+        }),
+        description="Non-weaponized Comexe DDNS protocol blueprint quality probe",
+        generate=_generate_comexe_ddns_protocol_probe,
+    )
+)
+
+register_template(
+    PoCTemplate(
+        vuln_type="config_state_machine",
+        families=frozenset({
+            "config_derived_injection",
+            "generic_config_parser",
+            "command_injection_candidate",
+        }),
+        description="Plan-IR-aware Web/API -> Config -> daemon parser probe",
+        generate=_generate_config_state_machine_probe,
+    )
+)
 
 register_template(
     PoCTemplate(

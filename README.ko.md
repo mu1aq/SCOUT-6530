@@ -16,7 +16,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Stages](https://img.shields.io/badge/Pipeline-47_Stages-blueviolet?style=for-the-badge)]()
 [![Zero Deps](https://img.shields.io/badge/Dependencies-Zero_(stdlib)-orange?style=for-the-badge)]()
-[![Version](https://img.shields.io/badge/Version-2.7.2-red?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-2.7.3-red?style=for-the-badge)]()
 
 [![SARIF](https://img.shields.io/badge/SARIF-2.1.0-blue?style=for-the-badge&logo=github)]()
 [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX_1.6+VEX-brightgreen?style=for-the-badge)]()
@@ -43,6 +43,13 @@
 
 > [!NOTE]
 > **README의 Tier 1 수치는 이제 fresh v2.6.1 corpus refresh 기준입니다** (`docs/carry_over_benchmark_v2.6.md`): 1,123 targets, **1110 success / 4 partial / 9 fatal**. Tier 2 LLM 수치는 pair-eval lane이 닫히기 전까지는 여전히 carry-over (`v2.3.0`, 36 firmware)입니다. [`docs/benchmark_governance.md`](docs/benchmark_governance.md), [`docs/carry_over_benchmark_v2.6.md`](docs/carry_over_benchmark_v2.6.md), [`benchmarks/baselines/v2.5.0/manifest.json`](benchmarks/baselines/v2.5.0/manifest.json) 참조.
+
+> [!TIP]
+> **v2.7.3 핵심 변화** (Universal Chaining + ER605 Comexe DDNS 품질 패스)
+> - **ER605/Comexe DDNS 체인 모델링.** `exploitability_dossier`가 Comexe 서버명, `Data`, `ErrorCode`, `UpdateSvr1/2`, parser sink marker를 이용해 `cmxddnsd` 후보를 인식하고 `dns_mitm`, `udp_ddns_response`, `parser_field`, `info_leak_then_control` 채널을 남깁니다.
+> - **Protocol-aware Plan IR 및 AutoPoC 선택 개선.** `exploit_state_machine`은 dossier family를 보존하고 Comexe 후보를 `classify_ddns_protocol_chain_quality`로 낮춥니다. AutoPoC는 dossier/state-machine source 사이의 duplicate candidate ID도 중복 선택하지 않습니다.
+> - **Non-weaponized DDNS blueprint template.** `poc_templates.py`에 Comexe DDNS 품질 템플릿을 추가했습니다. safe packet/Plan-IR hash와 quality check를 기록하지만 overlong field, ROP, command payload, DES key recovery, spoofing infrastructure는 생성하지 않습니다.
+> - **PoC 품질 리뷰 문서화.** 공개 ER605 분석 기준 품질 평가와 남은 live-lab verifier gap은 [`docs/er605_poc_quality.md`](docs/er605_poc_quality.md)에 정리했습니다.
 
 > [!TIP]
 > **v2.7.2 핵심 변화** (Phase 2C++ detection engine integrity patch — scorecard 변화 없음 예상)

@@ -47,6 +47,69 @@ _IPC_EDGE_TYPES: frozenset[str] = frozenset(
 _MAX_CHAINS = 50
 
 
+@dataclass(frozen=True, kw_only=True)
+class Channel:
+    """First-class cross-boundary exploit chain channel.
+
+    Channels describe not only that two components share a string/API, but the
+    attacker capability, expected activation trigger, and evidence needed to
+    verify the handoff.  The fields intentionally stay JSON-native so they can
+    be copied into ``chains.json`` and downstream Plan IR artifacts.
+    """
+
+    channel_type: str
+    target: str
+    capability: str = "unknown"
+    transform: str = "unknown"
+    trigger: str = "unknown"
+    verifier: str = "unknown"
+    evidence_refs: tuple[str, ...] = tuple()
+
+    def as_dict(self) -> dict[str, JsonValue]:
+        return {
+            "channel_type": self.channel_type,
+            "target": self.target,
+            "capability": self.capability,
+            "transform": self.transform,
+            "trigger": self.trigger,
+            "verifier": self.verifier,
+            "evidence_refs": list(self.evidence_refs),
+        }
+
+
+@dataclass(frozen=True, kw_only=True)
+class WebAPIChannel(Channel):
+    channel_type: str = "web_api"
+    capability: str = "external_http_request"
+    transform: str = "http_form_json_or_query_parser"
+    trigger: str = "request_dispatch"
+    verifier: str = "http_response_or_route_trace"
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConfigChannel(Channel):
+    channel_type: str = "config"
+    capability: str = "attacker_writable_if_surface_controls_field"
+    transform: str = "config_parser_or_serialized_setting"
+    trigger: str = "config_commit_reload_daemon_parse_or_boot"
+    verifier: str = "config_readback_or_sink_side_effect"
+
+
+@dataclass(frozen=True, kw_only=True)
+class IPCChannel(Channel):
+    channel_type: str = "ipc"
+    ipc_mechanism: str = "unknown"
+    capability: str = "cross_process_message_or_state_handoff"
+    transform: str = "ipc_protocol_or_shared_state"
+    trigger: str = "ipc_message_signal_poll_or_reader_loop"
+    verifier: str = "ipc_trace_log_or_downstream_side_effect"
+
+    def as_dict(self) -> dict[str, JsonValue]:
+        obj = super().as_dict()
+        obj["ipc_mechanism"] = self.ipc_mechanism
+        return obj
+
+
 def _load_json_file(path: Path) -> object | None:
     if not path.is_file():
         return None
@@ -720,6 +783,17 @@ class ChainConstructorStage:
                     if src_findings and dst_findings:
                         chain_id += 1
                         ipc_type = str(edge.get("type", "ipc"))
+                        graph_channel = IPCChannel(
+                            target=(
+                                str(edge.get("label", ""))
+                                or str(edge.get("path", ""))
+                                or f"{src_binary}->{dst_binary}"
+                            ),
+                            ipc_mechanism=ipc_type,
+                            evidence_refs=(
+                                "stages/graph/communication_graph.json",
+                            ),
+                        )
                         cross_binary_chains.append(
                             {
                                 "id": f"chain_{chain_id:03d}",
@@ -729,6 +803,10 @@ class ChainConstructorStage:
                                 ),
                                 "chain_type": "cross_binary",
                                 "ipc_type": ipc_type,
+                                "channels": cast(
+                                    list[JsonValue],
+                                    cast(list[object], [graph_channel.as_dict()]),
+                                ),
                                 "steps": cast(
                                     list[JsonValue],
                                     cast(
@@ -833,32 +911,36 @@ class ChainConstructorStage:
         def _detect_ipc_mechanism(
             shared_sym: str,
             bins: list[str],
-        ) -> tuple[str, str] | None:
+        ) -> Channel | None:
             """Classify a shared symbol into an IPC mechanism.
 
-            Returns (ipc_mechanism, shared_key) or None.
+            Returns Channel or None.
             """
             sym_lower = shared_sym.lower()
 
             # nvram-based IPC
             if sym_lower in {s.lower() for s in _NVRAM_SYMS}:
-                return ("nvram_shared", shared_sym)
+                return IPCChannel(target=shared_sym, ipc_mechanism="nvram_shared")
 
             # Unix socket IPC
             if any(shared_sym.startswith(p) for p in _SOCKET_PATH_PREFIXES):
                 if ".sock" in sym_lower or "socket" in sym_lower:
-                    return ("unix_socket", shared_sym)
+                    return IPCChannel(target=shared_sym, ipc_mechanism="unix_socket")
 
             # File-based IPC via /tmp or /var paths
             if any(shared_sym.startswith(p) for p in _FILE_IPC_PREFIXES):
-                return ("file_ipc", shared_sym)
+                return IPCChannel(target=shared_sym, ipc_mechanism="file_ipc")
 
             # D-Bus interface IPC
             if any(shared_sym.startswith(p) for p in _DBUS_PREFIXES):
                 if "." in shared_sym and len(shared_sym) > 8:
-                    return ("dbus", shared_sym)
+                    return IPCChannel(target=shared_sym, ipc_mechanism="dbus")
 
-            # Shared config keys that look like IPC
+            # Generalized Web API routes
+            if shared_sym.startswith("/cgi-bin/") or shared_sym.startswith("/api/"):
+                return WebAPIChannel(target=shared_sym)
+
+            # Generalized Config Keys (UCI/NVRAM/JSON config nodes)
             if sym_lower in {
                 "admin_pass",
                 "admin_password",
@@ -868,8 +950,15 @@ class ChainConstructorStage:
                 "lan_ipaddr",
                 "wl_ssid",
                 "wps_pin",
-            }:
-                return ("nvram_shared", shared_sym)
+                "interface",
+                "domain",
+                "hostname",
+                "username",
+                "passwd",
+                "enable",
+                "interval",
+            } or (len(shared_sym) > 5 and ("config" in sym_lower or "uci_" in sym_lower)):
+                return ConfigChannel(target=shared_sym)
 
             return None
 
@@ -891,6 +980,17 @@ class ChainConstructorStage:
             sh_match = str(sh_sample.get("match", ""))
             if sh_file and sh_match:
                 file_strings.setdefault(sh_file, set()).add(sh_match)
+        for sh_match, files in {
+            match: sorted(
+                file_name
+                for file_name, matches in file_strings.items()
+                if match in matches
+            )
+            for matches in file_strings.values()
+            for match in matches
+        }.items():
+            if len(files) >= 2:
+                cross_strings.setdefault(sh_match, files)
 
         # Track seen binary pairs to avoid duplicates
         seen_pairs: set[tuple[str, str]] = set()
@@ -903,7 +1003,13 @@ class ChainConstructorStage:
             if ipc_result is None:
                 continue
 
-            ipc_mechanism, shared_key = ipc_result
+            channel = ipc_result
+            ipc_mechanism = (
+                channel.ipc_mechanism
+                if isinstance(channel, IPCChannel)
+                else channel.channel_type
+            )
+            shared_key = channel.target
 
             # Build chains between all pairs of binaries sharing this IPC
             for i, bin_a in enumerate(bins):
@@ -999,6 +1105,10 @@ class ChainConstructorStage:
                             "binary_b": dst_bin,
                             "ipc_mechanism": ipc_mechanism,
                             "shared_key": shared_key,
+                            "channels": cast(
+                                list[JsonValue],
+                                cast(list[object], [channel.as_dict()]),
+                            ),
                             "steps": cast(
                                 list[JsonValue],
                                 cast(list[object], steps),
@@ -1086,6 +1196,13 @@ class ChainConstructorStage:
                             src_bin, dst_bin = nv_a, nv_b
                         else:
                             src_bin, dst_bin = nv_b, nv_a
+                        channel = IPCChannel(
+                            target="nvram_api",
+                            ipc_mechanism="nvram_shared",
+                            evidence_refs=(
+                                "stages/inventory/binary_analysis.json",
+                            ),
+                        )
 
                         cross_binary_ipc_chains.append(
                             {
@@ -1099,6 +1216,10 @@ class ChainConstructorStage:
                                 "binary_b": dst_bin,
                                 "ipc_mechanism": "nvram_shared",
                                 "shared_key": "nvram_api",
+                                "channels": cast(
+                                    list[JsonValue],
+                                    cast(list[object], [channel.as_dict()]),
+                                ),
                                 "steps": cast(
                                     list[JsonValue],
                                     cast(
