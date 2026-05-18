@@ -16,10 +16,6 @@
   <a href="CHANGELOG.md">Changelog</a>
 </div>
 
-<div align="center">
-  [English (this file)](README.md) | [한국어](README.ko.md)
-</div>
-
 <br />
 
 <div align="center">
@@ -634,6 +630,15 @@ Apache 2.0
 ---
 
 <div align="center">
+
+<sub>Built for the security research community. Not for unauthorized access.</sub>
+
+<br />
+
+<a href="https://github.com/R00T-Kim/SCOUT">github.com/R00T-Kim/SCOUT</a>
+
+</div>
+center">
 
 <sub>Built for the security research community. Not for unauthorized access.</sub>
 
