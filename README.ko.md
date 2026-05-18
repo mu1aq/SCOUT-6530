@@ -59,21 +59,6 @@
 > - **Exploit-first lab PoV template.** `poc_templates.py`에 outbound response-chain PoV 템플릿을 추가했습니다. configured target에 짧은 benign lab packet만 보내고 observed response/readback evidence가 있을 때만 `vulnerability_trigger` 성공으로 인정합니다. overlong field, ROP, command payload, crypto/key recovery, spoofing infrastructure는 생성하지 않습니다.
 > - **PoC 품질 리뷰 문서화.** 공개 ER605 분석 기준 품질 평가와 남은 live-lab verifier gap은 [`docs/er605_poc_quality.md`](docs/er605_poc_quality.md)에 정리했습니다.
 
-> [!TIP]
-> **v2.7.2 핵심 변화** (Phase 2C++ detection engine integrity patch — scorecard 변화 없음 예상)
-> - **Phase 2C++.1 — `DECOMPILED_COLOCATED_CAP = 0.45` 명명 상수 승격.** `decompiled_colocated` taint method가 이전에는 inline literal `0.50`으로 하드코딩되어 있었음. 5-tier cap 사다리 (`SYMBOL_COOCCURRENCE 0.40 < DECOMPILED_COLOCATED 0.45 < STATIC_CODE_VERIFIED 0.55 < STATIC_ONLY 0.60 < PCODE_VERIFIED 0.75`)가 외부 인용 가능한 형태로 노출됨. Consumer 영향: `decompiled_colocated` trace가 `0.50 → 0.45` (-0.05); ROC threshold 0.50 pin은 0.45로 재조정 필요. `priority_score`와 `cve_scan`의 `STATIC_CODE_VERIFIED_CAP=0.55`는 변화 없음. 근거: v2.4.0 외부 리뷰(`docs/upgrade_plz.md` Gap C)가 prior 값이 body-text-only 증거 수준 대비 과대평가됐다고 지적.
-> - **Phase 2C++.2 — `ghidra_analysis.py`와 `ghidra_scripts/pcode_taint.py`에서 legacy `addr_diff > 16` 잔해 제거.** 커밋 `3352783`(v2.4.1)이 primary CALL 매칭 경로를 callee-name resolution으로 교체했으나, `_PYGHIDRA_SCRIPT` 안의 dead `trace_pcode_forward()` helper와 analyzeHeadless Strategy 1 루프의 unreachable `else: addr_diff` fallback이 남아있었음. 둘 다 물리적으로 제거; `_trace_forward_pcode()`의 `source_api_name` 파라미터는 필수(default 제거). Runtime 동작 변화 없음 — production 경로는 이미 13일 전부터 callee-name 매칭만 사용. `tests/test_ghidra_dead_code_removed.py`가 제거를 pin.
-> - **Scorecard 변화 없음 예상.** Gap B는 v2.4.1부터 runtime-effective. Gap C의 새 ceiling은 `decompiled_colocated` trace에만 bind되는데, 이 method는 pyghidra fallback(`ghidra_analysis.py:609`)에서만 emit되고 Ghidra-12 환경에서는 이 경로가 실행되지 않음. Phase 2D' Entry Gate는 v2.7.1 figure of record (**2/5 PASS**) 유지. Pair-eval 재측정은 Gap A(interprocedural taint) ROI를 평가할 별도 세션으로 이연.
-> - **Pivot Option D (compliance-led identity) 유지.** v2.7.2는 detection engine hygiene이지 behavioural pivot 아님. v2.7.0에서 ship한 `compliance_report` stage와 4 standard mapping은 변화 없음.
-
-> [!TIP]
-> **v2.7.1 핵심 변화** (Phase 2C+.4 vendor corpus 확장 — v2.7.0 시나리오 C의 정량적 정련)
-> - **Pair-eval corpus 7 → 12 pair로 확장** — 신규 5종: D-Link DIR-859 (CVE-2019-17621), D-Link DIR-878 (vendor advisory), ASUS RT-AC68U (CVE-2020-15498), Linksys WRT1900AC v2 (progression), Linksys EA6700 (progression). Manifest 등록만으로 Phase 2D' Entry Gate 5 (corpus ≥ 10) 통과.
-> - **Phase 2D' Entry Gate scorecard: 1/5 → 2/5 PASS** (Gate 4 Rerun + Gate 5 Corpus). Gate 1 recall 0.143 → 0.167 (+17% rel) 개선되었지만 여전히 FAIL; Gate 2 (tier 변별력)과 Gate 3 (finding diversity 0.917)도 FAIL 유지. 신규 TP/FP가 동일 `aiedge.findings.web.exec_sink_overlap`에 매핑됨 (DIR-859 vuln + patched 모두) — v2.7.0 진단 ("`findings.py` single-synthesis-finding selection이 Gate 1/3 구조적 한계") 재확인.
-> - **정직한 figure-of-record 측정 원칙** — 1차 측정에서 WRT1900AC partial extraction이 만든 `aiedge.findings.analysis_incomplete`가 `unknown` tier를 채워 Gate 2가 일시적으로 PASS로 보였음. `--time-budget-s 2400` 재실행으로 ok 전환 후 unknown TP 소멸, Gate 2 baseline (FAIL)으로 회귀. 정직한 figure of record는 ok 측정. 상세는 `docs/v2.7.1_release_plan.md` 참조.
-> - **Scorer 안정성 fix** — `scripts/score_pair_corpus.py`가 누락된 pair run에 대해 `StopIteration`으로 abort 하지 않고 graceful-skip (`vulnerable_status="missing"` / `patched_status="missing"` 기록 후 분모에서 자연 제외). corpus 확장 / partial-coverage 측정이 release gate를 더 이상 크래시하지 않음.
-> - **Pivot Option D (compliance-led identity) 유지** — v2.7.1은 v2.7.0 시나리오 C의 정량적 정련이지 re-pivot 아님. v2.7.0의 `compliance_report` stage와 4 standard mapping은 변경 없음.
-
 ---
 
 ## 왜 SCOUT인가?
@@ -161,10 +146,10 @@
 | :brain: | **테인트 분석** | HTTP-aware 프로시저 간 테인트, P-code SSA dataflow, call chain 시각화, 4-strategy fallback (P-code → colocated → decompiled → interprocedural) |
 | :robot: | **LLM 엔진** | 4개 백엔드 (Codex CLI / Claude API / Claude Code CLI / Ollama) + 중앙 관리 시스템 프롬프트 + structured JSON 출력 + 5-stage 파서 (preamble/fence/raw/brace-counting/error-recovery) + temperature 제어 |
 | :crossed_swords: | **LLM-Adjudicated Debate** | Advocate/Critic LLM 판정 기반 FP 후보 축소 (Tier 2 carry-over 기준 99.3%). parse_failures vs llm_call_failures 분리 + quota_exhausted 명시적 탐지 |
-| :compass: | **Explainability Surface** *(v2.6.1)* | finding / analyst markdown / TUI / 웹 뷰어에 `reasoning_trail`과 evidence lineage를 보존해, 왜 downgrade/uphold/priority 결정이 났는지 바로 추적 가능. advocate / critic / decision / pattern-hit 엔트리, raw response 200자 redaction |
-| :inbox_tray: | **Analyst-in-the-loop Channel** *(v2.6.1)* | reasoning 조회, hint injection, verdict override, category filter 4개 tool. `AIEDGE_FEEDBACK_DIR` opt-in으로 hint가 다음 런 advocate 프롬프트에 주입됨 (`fcntl.flock` 기반 쓰기 안전) |
-| :triangular_ruler: | **Detection vs Priority 분리** *(v2.6.0)* | `confidence`는 증거 강도만 (≤0.55 static cap), `priority_score` / `priority_inputs`는 EPSS·reachability·backport·CVSS 기반 운영 우선순위 신호만 담당. [`docs/scoring_calibration.md`](docs/scoring_calibration.md) 참조 |
-| :speedboat: | **병렬 DAG 실행** *(v2.6.0, PoC)* | `--experimental-parallel [N]` 기반 opt-in level-wise stage 병렬 실행 (ThreadPoolExecutor + Kahn topo). 47-stage 기준 15 level / max-width 7. 기존 순차 경로 무수정 |
+| :compass: | **Explainability Surface** | finding / analyst markdown / TUI / 웹 뷰어에 `reasoning_trail`과 evidence lineage를 보존해, 왜 downgrade/uphold/priority 결정이 났는지 바로 추적 가능. advocate / critic / decision / pattern-hit 엔트리, raw response 200자 redaction |
+| :inbox_tray: | **Analyst-in-the-loop Channel** | reasoning 조회, hint injection, verdict override, category filter 4개 tool. `AIEDGE_FEEDBACK_DIR` opt-in으로 hint가 다음 런 advocate 프롬프트에 주입됨 (`fcntl.flock` 기반 쓰기 안전) |
+| :triangular_ruler: | **Detection vs Priority 분리** | `confidence`는 증거 강도만 (≤0.55 static cap), `priority_score` / `priority_inputs`는 EPSS·reachability·backport·CVSS 기반 운영 우선순위 신호만 담당. [`docs/scoring_calibration.md`](docs/scoring_calibration.md) 참조 |
+| :speedboat: | **병렬 DAG 실행** | `--experimental-parallel [N]` 기반 opt-in level-wise stage 병렬 실행 (ThreadPoolExecutor + Kahn topo). 47-stage 기준 15 level / max-width 7. 기존 순차 경로 무수정 |
 | :shield: | **보안 평가** | X.509 인증서 스캔, 부트 서비스 감사, 파일시스템 권한, 자격 증명 매핑, hardcoded secret 탐지 |
 | :test_tube: | **퍼징** *(선택)* | AFL++ CMPLOG, persistent mode, NVRAM faker, 하니스 생성, crash triage |
 | :bug: | **에뮬레이션** | 4-tier (FirmAE / Pandawan+FirmSolo / QEMU user-mode / rootfs 검사) + GDB 원격 디버깅 |
@@ -191,7 +176,7 @@
 - 인간 분석가의 힌트는 다음 런 판단에 반영될 수 있지만, 최종 판정 책임은 여전히 분석가에게 남는다.
 
 ### Autonomous reasoning (future)
-- v2.6.1의 SCOUT는 **완전자율 exploit agent**로 포지셔닝하지 않는다.
+- v2.8.0의 SCOUT는 **완전자율 exploit agent**로 포지셔닝하지 않는다.
 - multi-agent exploit chain, pair-grounded eval loop, LLM fuzz harness는 **Phase 2D / reviewer eval lane** 범위다.
 
 ## 파이프라인 (47단계)

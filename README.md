@@ -59,21 +59,6 @@
 > - **Exploit-first lab PoV template.** `poc_templates.py` adds an outbound response-chain PoV template that sends only a short benign lab packet to the configured target and returns `vulnerability_trigger` success only with observed response/readback evidence; it does not generate overlong fields, ROP, command payloads, crypto/key recovery, or spoofing infrastructure.
 > - **PoC quality review documented.** See [`docs/er605_poc_quality.md`](docs/er605_poc_quality.md) for the quality assessment against the public ER605 analysis and the remaining live-lab verifier gaps.
 
-> [!TIP]
-> **What's new in v2.7.2** (Phase 2C++ detection-engine integrity patch — no scorecard movement expected)
-> - **Phase 2C++.1 — `DECOMPILED_COLOCATED_CAP = 0.45` promoted to a named constant.** The `decompiled_colocated` taint method previously hardcoded a `0.50` ceiling inline. The 5-tier cap ladder (`SYMBOL_COOCCURRENCE 0.40 < DECOMPILED_COLOCATED 0.45 < STATIC_CODE_VERIFIED 0.55 < STATIC_ONLY 0.60 < PCODE_VERIFIED 0.75`) is now externally cited. Consumer impact: `decompiled_colocated` traces drop `0.50 → 0.45` (-0.05); ROC thresholds previously pinned at 0.50 should be retuned to 0.45. `priority_score` and `cve_scan`'s `STATIC_CODE_VERIFIED_CAP=0.55` unchanged. Rationale: the v2.4.0 external review (`docs/upgrade_plz.md` Gap C) flagged the prior value as over-confident relative to body-text-only evidence.
-> - **Phase 2C++.2 — legacy `addr_diff > 16` residues removed from `ghidra_analysis.py` and `ghidra_scripts/pcode_taint.py`.** Commit `3352783` (v2.4.1) replaced the primary CALL-matching path with callee-name resolution but left a dead `trace_pcode_forward()` helper inside `_PYGHIDRA_SCRIPT` and an unreachable `else: addr_diff` fallback in the analyzeHeadless Strategy 1 loop. Both are now physically removed; `_trace_forward_pcode()`'s `source_api_name` parameter is required (no default). No runtime behaviour change — the production paths have done callee-name matching for 13 days already. Guard-rail tests in `tests/test_ghidra_dead_code_removed.py` pin the removal.
-> - **No scorecard movement expected.** Gap B was runtime-effective since v2.4.1. Gap C's new ceiling only binds on `decompiled_colocated` traces, which are emitted solely by the pyghidra fallback (`ghidra_analysis.py:609`) that Ghidra-12 environments don't exercise. Phase 2D' Entry Gate remains at the v2.7.1 figure of record (**2/5 PASS**). Pair-eval re-measurement is deferred to the session that evaluates Gap A (interprocedural taint) ROI.
-> - **Pivot Option D (compliance-led identity) remains in force.** v2.7.2 is detection-engine hygiene, not a behavioural pivot. The `compliance_report` stage and four standard mappings shipped in v2.7.0 are unchanged.
-
-> [!TIP]
-> **What's new in v2.7.1** (Phase 2C+.4 vendor corpus expansion — quantitative refinement of v2.7.0's scenario C)
-> - **Pair-eval corpus extended 7 → 12 pairs** — five new vendor/model entries: D-Link DIR-859 (CVE-2019-17621), D-Link DIR-878 (vendor advisory), ASUS RT-AC68U (CVE-2020-15498), Linksys WRT1900AC v2 (progression), and Linksys EA6700 (progression). Manifest registration alone clears Phase 2D' Entry Gate 5 (corpus ≥ 10).
-> - **Phase 2D' Entry Gate scorecard: 1/5 → 2/5 PASS** (Gate 4 Rerun + Gate 5 Corpus). Gate 1 recall improves 0.143 → 0.167 (+17% relative) but still FAIL; Gate 2 (tier variation) and Gate 3 (finding diversity 0.917) remain FAIL. The new TP/FP pair (DIR-859 vuln + patched both hit `aiedge.findings.web.exec_sink_overlap`) corroborates the v2.7.0 diagnosis that `findings.py`'s single-synthesis-finding selection is the structural Gate 1/3 limit.
-> - **Honest measurement-of-record protocol** — an intermediate 1st-pass measurement under partial WRT1900AC extractions transiently showed Gate 2 PASS due to `aiedge.findings.analysis_incomplete` populating the `unknown` tier; the figure of record is the ok-state measurement after the 2400-second budget rerun (Gate 2 reverts to FAIL). Documented in `docs/v2.7.1_release_plan.md`.
-> - **Scorer reliability fix** — `scripts/score_pair_corpus.py` now graceful-skips pairs with absent runs (`vulnerable_status="missing"` / `patched_status="missing"`) instead of aborting on `StopIteration`, so corpus growth and partial-coverage measurements no longer crash the release gate.
-> - **Pivot Option D (compliance-led identity) remains in force** — v2.7.1 is a quantitative refinement of v2.7.0's scenario C, not a re-pivot. The `compliance_report` stage and four standard mappings shipped in v2.7.0 are unchanged.
-
 ---
 
 ## Why SCOUT?
@@ -161,10 +146,10 @@
 | :brain: | **Taint Analysis** | HTTP-aware inter-procedural taint, P-code SSA dataflow, call chain visualization, 4-strategy fallback (P-code → colocated → decompiled → interprocedural) |
 | :robot: | **LLM Engine** | 4 backends (Codex CLI / Claude API / Claude Code CLI / Ollama) + centralized system prompts + structured JSON output + 5-stage parser (preamble/fence/raw/brace-counting/error-recovery) + temperature control |
 | :crossed_swords: | **LLM-Adjudicated Debate** | Advocate/Critic LLM debate for LLM-adjudicated FPR reduction (99.3% on the Tier 2 carry-over baseline). Separate parse_failures vs llm_call_failures observability with quota_exhausted detection |
-| :compass: | **Explainability Surface** *(v2.6.1)* | `reasoning_trail` persisted across findings, analyst Markdown, TUI, and web viewer so reviewers can inspect matched evidence lineage — not just a final score. Advocate / critic / decision / pattern-hit entries with 200-char excerpt redaction |
-| :inbox_tray: | **Analyst-in-the-loop Channel** *(v2.6.1)* | 4 MCP tools for reasoning lookup, hint injection, verdict override, and category filtering. Hints loop back into next-run advocate prompt via `AIEDGE_FEEDBACK_DIR` (opt-in, `fcntl.flock`-safe) |
-| :triangular_ruler: | **Detection vs Priority Separation** *(v2.6.0)* | `confidence` stays evidence-bound (≤0.55 static cap); `priority_score` / `priority_inputs` capture EPSS, reachability, backport, and CVSS as ranking signals. See [`docs/scoring_calibration.md`](docs/scoring_calibration.md) |
-| :speedboat: | **Parallel DAG Execution** *(v2.6.0, PoC)* | `--experimental-parallel [N]` opt-in level-wise stage parallelism (ThreadPoolExecutor + Kahn topo levels). 15 levels / max-width 7 on the 47-stage pipeline. Sequential path unchanged |
+| :compass: | **Explainability Surface** | `reasoning_trail` persisted across findings, analyst Markdown, TUI, and web viewer so reviewers can inspect matched evidence lineage — not just a final score. Advocate / critic / decision / pattern-hit entries with 200-char excerpt redaction |
+| :inbox_tray: | **Analyst-in-the-loop Channel** | 4 MCP tools for reasoning lookup, hint injection, verdict override, and category filtering. Hints loop back into next-run advocate prompt via `AIEDGE_FEEDBACK_DIR` (opt-in, `fcntl.flock`-safe) |
+| :triangular_ruler: | **Detection vs Priority Separation** | `confidence` stays evidence-bound (≤0.55 static cap); `priority_score` / `priority_inputs` capture EPSS, reachability, backport, and CVSS as ranking signals. See [`docs/scoring_calibration.md`](docs/scoring_calibration.md) |
+| :speedboat: | **Parallel DAG Execution** | `--experimental-parallel [N]` opt-in level-wise stage parallelism (ThreadPoolExecutor + Kahn topo levels). 15 levels / max-width 7 on the 47-stage pipeline. Sequential path unchanged |
 | :shield: | **Security Assessment** | X.509 cert scan, boot service audit, filesystem permission checks, credential mapping, hardcoded secret detection |
 | :test_tube: | **Fuzzing** *(optional)* | AFL++ with CMPLOG, persistent mode, NVRAM faker, harness generation, crash triage |
 | :bug: | **Emulation** | 4-tier (FirmAE / Pandawan+FirmSolo / QEMU user-mode / rootfs inspection) + GDB remote debug |
@@ -191,7 +176,7 @@
 - Human hints are allowed to influence the next run; final ownership still stays with the analyst.
 
 ### Autonomous reasoning (future)
-- SCOUT is **not** positioned as a fully autonomous exploit agent in v2.6.1.
+- SCOUT is **not** positioned as a fully autonomous exploit agent in v2.8.0.
 - Multi-agent exploit chains, pair-grounded evaluation loops, and autonomous fuzz harness generation remain **Phase 2D / reviewer-eval lane** work.
 
 ## Pipeline (47 Stages)
