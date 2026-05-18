@@ -16,6 +16,10 @@
   <a href="CHANGELOG.md">변경 이력</a>
 </div>
 
+<div align="center">
+  [English](README.md) | [한국어 (이 파일)](README.ko.md)
+</div>
+
 <br />
 
 <div align="center">
