@@ -199,7 +199,12 @@ def _crash_replay_verdict(
     offsets_raw = attempt.get("cyclic_offsets")
     offsets = _list_dict(offsets_raw)
     if status == "crash_observed" and offsets:
-        return "control_influence_candidate", "pc_or_register_control", list(refs), offsets[:12]
+        return (
+            "control_influence_candidate",
+            "pc_or_register_control",
+            list(refs),
+            cast(list[dict[str, JsonValue]], offsets[:12]),
+        )
     if status == "crash_observed":
         return "crash_observed", "dos_or_memory_corruption_candidate", list(refs), []
     if status in {"planned_no_binary", "planned_qemu_missing", "skipped_gate"}:
@@ -317,9 +322,9 @@ class PrimitiveVerifierStage:
                     "protocol_id": machine.protocol_id,
                     "status": status,
                     "primitive": primitive,
-                    "families": list(machine.families),
+                    "families": cast(list[JsonValue], cast(list[object], list(machine.families))),
                     "cyclic_offsets": cast(JsonValue, offsets),
-                    "evidence_refs": list(dict.fromkeys(refs))[:24],
+                    "evidence_refs": cast(list[JsonValue], cast(list[object], list(dict.fromkeys(refs))[:24])),
                 }
             )
 
@@ -336,13 +341,19 @@ class PrimitiveVerifierStage:
             "claim_boundary": "primitive classification from verifier evidence only; no exploitability claim without pass evidence",
             "results": cast(JsonValue, results),
             "cyclic_pattern": "stages/primitive_verifier/cyclic_pattern.txt",
-            "verifier_refs": [
-                "pwntools cyclic/cyclic_find de Bruijn offset model",
-                "GDB Python Frame.read_register register snapshot model",
-                "QEMU user-mode -g debug endpoint model",
-                "ROPgadget architecture support for ROP feasibility review",
-            ],
-            "summary": summary,
+            "verifier_refs": cast(
+                list[JsonValue],
+                cast(
+                    list[object],
+                    [
+                        "pwntools cyclic/cyclic_find de Bruijn offset model",
+                        "GDB Python Frame.read_register register snapshot model",
+                        "QEMU user-mode -g debug endpoint model",
+                        "ROPgadget architecture support for ROP feasibility review",
+                    ],
+                ),
+            ),
+            "summary": cast(dict[str, JsonValue], summary),
             "limitations": cast(JsonValue, limitations),
         }
         _write_json(out_json, payload)

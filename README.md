@@ -1,4 +1,7 @@
-[English (this file)](README.md) | [한국어](README.ko.md)
+<p align="right">
+  <strong>English</strong> |
+  <a href="README.ko.md">한국어</a>
+</p>
 
 # SCOUT
 

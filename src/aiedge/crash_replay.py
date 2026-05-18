@@ -22,7 +22,7 @@ from typing import cast
 from .path_safety import assert_under_dir
 from .primitive_verifier import cyclic_find, cyclic_pattern
 from .schema import JsonValue
-from .stage import StageContext, StageOutcome
+from .stage import StageContext, StageOutcome, StageStatus
 
 SCHEMA_VERSION = "crash-replay-v1"
 _MAX_MACHINES = 12
@@ -344,14 +344,14 @@ class CrashReplayStage:
                 "candidate_id": machine.candidate_id,
                 "chain_id": machine.chain_id,
                 "protocol_id": machine.protocol_id,
-                "families": list(machine.families),
+                "families": cast(list[JsonValue], cast(list[object], list(machine.families))),
                 "binary": machine.binary,
                 "arch": arch,
                 "qemu": qemu_name or "unknown",
                 "rootfs": rootfs.relative_to(run_dir).as_posix() if rootfs.is_relative_to(run_dir) else str(rootfs),
                 "cyclic_probe": probe_rel if allowed else "",
                 "gdb_script": gdb_rel,
-                "evidence_refs": list(machine.evidence_refs) + [gdb_rel],
+                "evidence_refs": cast(list[JsonValue], cast(list[object], list(machine.evidence_refs) + [gdb_rel])),
             }
 
             if not allowed:
@@ -399,7 +399,10 @@ class CrashReplayStage:
                     "stdout_excerpt": stdout_s[:500],
                     "stderr_excerpt": stderr_s[:500],
                     "cyclic_offsets": cast(JsonValue, offsets),
-                    "evidence_refs": list(machine.evidence_refs) + [probe_rel, gdb_rel, stdout_rel, stderr_rel],
+                    "evidence_refs": cast(
+                        list[JsonValue],
+                        cast(list[object], list(machine.evidence_refs) + [probe_rel, gdb_rel, stdout_rel, stderr_rel]),
+                    ),
                 }
             )
 
@@ -418,12 +421,15 @@ class CrashReplayStage:
             "profile": profile,
             "claim_boundary": "lab-gated local replay evidence only; no third-party target interaction",
             "attempts": cast(JsonValue, attempts),
-            "summary": summary,
+            "summary": cast(dict[str, JsonValue], summary),
             "limitations": cast(JsonValue, limitations),
         }
         _write_json(out_json, payload)
         return StageOutcome(
-            status=cast(str, status_out),
-            details={"summary": summary, "evidence": [{"path": "stages/crash_replay/crash_replay.json"}]},
+            status=cast(StageStatus, status_out),
+            details={
+                "summary": cast(dict[str, JsonValue], summary),
+                "evidence": [{"path": "stages/crash_replay/crash_replay.json"}],
+            },
             limitations=limitations,
         )
