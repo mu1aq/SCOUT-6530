@@ -28,7 +28,6 @@ from .functional_spec import FunctionalSpecStage
 from .graph import GraphStage
 from .handoff_writer import write_firmware_handoff
 from .inventory import InventoryStage
-from .script_analyzer import ScriptAnalyzer
 from .llm_codex import run_codex_exec_summary
 from .llm_synthesis import LLMSynthesisStage
 from .normalize import normalize_evidence_list, normalize_limitations_list
@@ -47,6 +46,7 @@ from .schema import (
     JsonValue,
     empty_report,
 )
+from .script_analyzer import ScriptAnalyzer
 from .stage import (
     RunReport,
     Stage,
@@ -61,6 +61,18 @@ from .surfaces import SurfacesStage
 from .threat_model import ThreatModelStage
 from .tooling import ToolingStage
 from .web_ui import WebUiStage
+
+
+def _json_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float, str)):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+    return default
+
 
 DEFAULT_EGRESS_ALLOWLIST: tuple[str, ...] = (
     "pypi.org",
@@ -1672,10 +1684,10 @@ def _apply_stage_result_to_report(
             "status": stage_result.status,
             "findings": findings,
             "summary": {
-                "scripts_discovered": int(details.get("scripts_discovered", 0)),
-                "scripts_analyzed": int(details.get("scripts_analyzed", 0)),
-                "scripts_missing": int(details.get("scripts_missing", 0)),
-                "scripts_read_failed": int(details.get("scripts_read_failed", 0)),
+                "scripts_discovered": _json_int(details.get("scripts_discovered", 0)),
+                "scripts_analyzed": _json_int(details.get("scripts_analyzed", 0)),
+                "scripts_missing": _json_int(details.get("scripts_missing", 0)),
+                "scripts_read_failed": _json_int(details.get("scripts_read_failed", 0)),
                 "findings_truncated": bool(details.get("findings_truncated", False)),
                 "total_findings": len(findings),
             },
@@ -1684,7 +1696,7 @@ def _apply_stage_result_to_report(
             existing_findings = report.get("findings")
             if not isinstance(existing_findings, list):
                 existing_findings = []
-            
+
             # Add script findings to the global findings list
             for f in findings:
                 if isinstance(f, dict):

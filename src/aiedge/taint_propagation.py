@@ -389,11 +389,11 @@ def _extract_bridges(func_map: dict[str, dict[str, str]]) -> list[dict[str, str]
     # Patterns for nvram_get("key"), nvram_set("key", val), connect("/path"), bind("/path")
     nvram_pat = re.compile(r'nvram_(?:safe_)?(?:get|set)\s*\(\s*"([^"]+)"')
     socket_pat = re.compile(r'(?:bind|connect)\s*\(\s*[^,]+,\s*"([^"]+)"')
-    
+
     for fname, finfo in func_map.items():
         body = finfo.get("body", "")
         binary = finfo.get("binary", "unknown")
-        
+
         for m in nvram_pat.finditer(body):
             bridges.append({
                 "type": "nvram",
@@ -402,7 +402,7 @@ def _extract_bridges(func_map: dict[str, dict[str, str]]) -> list[dict[str, str]
                 "function": fname,
                 "mode": "get" if "get" in m.group(0) else "set"
             })
-            
+
         for m in socket_pat.finditer(body):
             bridges.append({
                 "type": "socket",
@@ -418,7 +418,7 @@ def _match_bridges(bridges: list[dict[str, str]]) -> list[dict[str, str]]:
     matched = []
     sets = [b for b in bridges if b["mode"] in ("set", "connect", "bind")]
     gets = [b for b in bridges if b["mode"] in ("get", "msgrcv", "recv")]
-    
+
     for s in sets:
         for g in gets:
             if s["key"] == g["key"] and s["binary"] != g["binary"]:
@@ -1066,7 +1066,7 @@ class TaintPropagationStage:
                 # SCOUT 2.0: Extract and match cross-binary bridges
                 bridges = _extract_bridges(func_map)
                 matched_bridges = _match_bridges(bridges)
-                
+
                 # Collect unique sink symbols
                 sink_symbols: set[str] = set()
                 for sb in sink_binaries:

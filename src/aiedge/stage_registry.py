@@ -20,13 +20,13 @@ from .llm_synthesis import LLMSynthesisStage
 from .ota import OtaStage
 from .ota_payload import OtaPayloadStage
 from .path_safety import env_int
+from .script_analyzer import ScriptAnalyzer
 from .stage import Stage
 from .structure import StructureStage
 from .surfaces import SurfacesStage
 from .threat_model import ThreatModelStage
 from .tooling import ToolingStage
 from .web_ui import WebUiStage
-from .script_analyzer import ScriptAnalyzer
 
 
 class _RunInfoLike(Protocol):
@@ -366,7 +366,7 @@ def _make_script_analysis_stage(
     no_llm: bool,
 ) -> Stage:
     _ = source_input_path, remaining_s, no_llm
-    return ScriptAnalyzer(info)
+    return ScriptAnalyzer(info.firmware_dest)
 
 
 def _make_firmware_profile_stage(

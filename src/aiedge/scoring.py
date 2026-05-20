@@ -120,7 +120,7 @@ def compute_priority_score(inputs: PriorityInputs) -> float:
 
     if inputs.backport_present:
         score -= BACKPORT_PENALTY
-    
+
     # --- Context-aware boosts ---
     if inputs.is_chained:
         score += 0.35  # Major boost for findings that are part of an exploit chain
