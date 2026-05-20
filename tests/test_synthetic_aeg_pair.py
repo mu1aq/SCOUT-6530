@@ -1,12 +1,26 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import cast
+from types import ModuleType
+from typing import Callable, cast
 
-from scripts.run_aeg_synthetic_pair import run_synthetic_pair
+
+def _load_pair_runner() -> Callable[[Path], dict[str, object]]:
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_aeg_synthetic_pair.py"
+    spec = importlib.util.spec_from_file_location("run_aeg_synthetic_pair", script_path)
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"unable to load synthetic pair script: {script_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    loaded = cast(ModuleType, module)
+    runner = getattr(loaded, "run_synthetic_pair")
+    if not callable(runner):
+        raise AssertionError("run_synthetic_pair is not callable")
+    return cast(Callable[[Path], dict[str, object]], runner)
 
 
 def _case(summary: dict[str, object], name: str) -> dict[str, object]:
@@ -25,6 +39,7 @@ def _checks(case: dict[str, object]) -> dict[str, bool]:
 def test_synthetic_aeg_pair_splits_vulnerable_from_patched_control(
     tmp_path: Path,
 ) -> None:
+    run_synthetic_pair = _load_pair_runner()
     summary = run_synthetic_pair(tmp_path / "synthetic-pair")
 
     assert summary["passed"] is True
