@@ -5,11 +5,11 @@
 
 # SCOUT (v3.0.0-rc1)
 
-### 결정론적 증거 체인을 활용한 하이브리드 펌웨어 보안 분석 코파일럿
+### 결정론적 증거 계보를 갖춘 AEG-First 펌웨어 익스플로잇 가능성 플랫폼
 
-**SCOUT은 가공되지 않은 펌웨어 바이너리를 분석하여, 증거 기반의 실행 가능한 보안 보고서로 변환하는 딥 분석 파이프라인입니다. 이제 바이너리와 쉘 스크립트를 동시에 감사하는 하이브리드 분석 엔진을 탑재했습니다.**
+**SCOUT은 가공되지 않은 펌웨어 바이너리를 증거 기반 익스플로잇 가능성 체인, 실험실 한정 Proof-of-Vulnerability 모듈, 감사 가능한 보고서로 변환하는 AEG-first 펌웨어 분석 플랫폼입니다. 이제 바이너리와 쉘 스크립트를 동시에 감사하는 하이브리드 분석 엔진을 탑재했습니다.**
 
-*기존의 스캐너들이 탐지 수량과 속도에만 치중할 때, SCOUT은 분석가를 위한 고신뢰도 코파일럿 역할을 수행합니다. 단순한 CVE 목록을 나열하는 대신, ELF 바이너리와 쉘 스크립트를 가로지르는 익스플로잇 체인을 재구성하고, 증거 기반의 추론 과정을 통해 검증된 PoC를 생성합니다.*
+*기존의 스캐너들이 탐지 수량과 속도에만 치중할 때, SCOUT은 고신뢰도 AEG 코파일럿 역할을 수행합니다. 단순한 CVE 목록을 나열하는 대신, ELF 바이너리와 쉘 스크립트를 가로지르는 익스플로잇 체인을 재구성하고, 증거 기반 추론과 실험실 한정 PoV/PoC 검증으로 연결합니다.*
 
 <br />
 
@@ -54,9 +54,9 @@
 
 - **하이브리드 분석**: 단일 파이프라인에서 ELF 바이너리와 쉘 스크립트를 통합적으로 감사합니다.
 - **심층 익스플로잇 탐지**: `Web -> IPC -> Config -> Daemon` 또는 `Shell -> Binary`로 이어지는 복합 공격 체인을 탐지합니다.
-- **PoC 자동 생성**: **Exploit Pattern RAG**를 활용하여 실험실 검증용 Proof-of-Vulnerability 모듈을 생성합니다.
-  - SCOUT은 firmware-relevant CVE seed를 위해 PoC-in-GitHub 메타데이터 전용 importer를 포함하며, AutoPoC 검색에 쓰기 전 curated exploit pattern card로 승격하는 절차를 요구합니다.
-  - SCOUT은 raw 공개 PoC 저장소를 clone/실행/prompt 주입하지 않습니다. 자세한 내용은 [`docs/exploit-pattern-rag.md`](docs/exploit-pattern-rag.md)를 참고하세요.
+- **AEG-first AutoPoC**: **Exploit Pattern RAG**를 활용하여 펌웨어 증거에서 실험실 검증용 Proof-of-Vulnerability 모듈을 생성합니다.
+  - SCOUT은 firmware-relevant CVE seed를 위해 PoC-in-GitHub 메타데이터 전용 importer와 human-review-required draft pattern-card promoter를 포함합니다.
+  - SCOUT은 raw 공개 PoC 저장소를 clone/실행/prompt 주입하지 않습니다. 플랫폼 수준 AEG claim은 [`docs/aeg_e2e_validation.md`](docs/aeg_e2e_validation.md)의 동적 증거/FP gate를 통과해야 합니다. 자세한 내용은 [`docs/exploit-pattern-rag.md`](docs/exploit-pattern-rag.md)를 참고하세요.
 - **증거 기반 조사**: 글래스모피즘 웹 대시보드를 통해 디컴파일된 P-code와 쉘 로직을 시각적으로 조사합니다.
 - **감사/규제 대응형 보고**: SARIF, CycloneDX 1.6 SBOM+VEX, SLSA L2 증명서를 생성합니다.
 
@@ -92,6 +92,18 @@
 
 # PoC-in-GitHub 메타데이터만 사용해 Exploit Pattern RAG 후보 seed 생성
 python scripts/import_poc_in_github_candidates.py --dry-run
+
+# 후보 하나를 human-review-required pattern card 초안으로 변환
+python scripts/draft_exploit_pattern_card.py data/exploit_references/candidates/poc_in_github/cve-2024-1781.json --print-json
+
+# 실제 승인된 lab run 이후 동적 증거 + FP/FPR gate 강제
+python scripts/aeg_e2e_gate.py aiedge-runs/<run_id>
+
+# CI-safe AEG 회귀 테스트: 취약 lab 서비스는 pass, patched/control은 fail-closed
+python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pair
+
+# vulnerable/control 증거가 있는 Exploit Pattern RAG card 확인
+python scripts/check_exploit_pattern_evidence.py
 ```
 
 ---
@@ -106,6 +118,6 @@ python scripts/import_poc_in_github_candidates.py --dry-run
 | :dart: | **공격 표면 분석** | Source→sink 경로 추적, 웹 서버 자동 탐지, 5개 유형의 바이너리 간 IPC 체인 구성 |
 | :brain: | **테인 분석** | HTTP 컨텍스트를 이해하는 절차 간 테인 분석, P-code SSA 데이터플로우 시각화 |
 | :robot: | **LLM 엔진** | 4개의 백엔드 지원 + 중앙 집중식 시스템 프롬프트 + 구조화된 JSON 출력 |
-| :books: | **Exploit Pattern RAG** | 큐레이션된 pattern-card 검색 + PoC-in-GitHub 메타데이터 기반 firmware 후보 seed |
+| :books: | **Exploit Pattern RAG** | 큐레이션된 pattern-card 검색 + PoC-in-GitHub 메타데이터 seed + 검토된 draft 승격 + vulnerable/control 증거 추적 |
 | :crossed_swords: | **LLM 찬반 토론** | Advocate/Critic 모델 간의 토론을 통한 고신뢰도 오탐 제거 |
 | :bar_chart: | **웹 뷰어** | KPI 바, IPC 맵, 위험 히트맵 및 증거 탐색 기능을 갖춘 대시보드 제공 |
