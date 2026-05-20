@@ -54,6 +54,13 @@ The synthetic pair is a CI-safe regression proxy. It proves the AEG gate can
 separate a reproducible lab proof from a patched/control false positive. It does
 not replace a real firmware known-vulnerable/patched pair before release claims.
 
+The harness currently validates the `memory_stateful_probe` Exploit Pattern RAG
+card as synthetic pair evidence. Inspect card-level readiness with:
+
+```bash
+python scripts/check_exploit_pattern_evidence.py
+```
+
 ## Real-run workflow
 
 ```bash
