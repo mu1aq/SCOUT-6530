@@ -126,6 +126,8 @@ def test_runner_reuses_existing_runs_and_emits_promotable_pair_report(
             str(control),
             "--pattern-id",
             "cgi_param_cmd_injection",
+            "--skip-post-stages",
+            "--skip-verified-chain",
             "--out",
             str(out),
         ]
@@ -181,14 +183,28 @@ def test_runner_executes_scout_for_missing_sides_and_discovers_run_dirs(
 
     def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         cmd = cast(list[str], args[0])
-        assert cmd[:2] == ["./scout", "analyze"]
         stdout_fh = kwargs.get("stdout")
         assert stdout_fh is not None
-        run_dir = run_dirs.pop(0)
-        cast(Any, stdout_fh).write((str(run_dir) + "\n").encode())
+        if cmd[:2] == ["./scout", "analyze"]:
+            run_dir = run_dirs.pop(0)
+            cast(Any, stdout_fh).write((str(run_dir) + "\n").encode())
+            return subprocess.CompletedProcess(cmd, 0)
+        assert cmd[:2] == ["./scout", "stages"]
         return subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        module,
+        "_build_verified_chain",
+        lambda run_dir: {
+            "status": "success",
+            "returncode": 0,
+            "duration_s": 0.0,
+            "contract_path": str(Path(run_dir) / "verified_chain" / "verified_chain.json"),
+            "state": "pass",
+            "reason_codes": ["isolation_verified", "repro_3_of_3"],
+        },
+    )
     out = tmp_path / "report.json"
 
     rc = module.main(
@@ -209,4 +225,9 @@ def test_runner_executes_scout_for_missing_sides_and_discovers_run_dirs(
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["promotable_real_firmware_pair"] is True
     assert [row["status"] for row in payload["analysis"]] == ["success", "success"]
+    assert [row["status"] for row in payload["postprocess"]] == ["success", "success"]
+    assert {step["kind"] for row in payload["postprocess"] for step in row["steps"]} == {
+        "stages",
+        "build_verified_chain",
+    }
     assert not run_dirs

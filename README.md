@@ -107,6 +107,10 @@ python scripts/run_aeg_synthetic_pair.py --pattern config_derived_cmd_injection 
 # Inspect which Exploit Pattern RAG cards have vulnerable/control evidence
 python scripts/check_exploit_pattern_evidence.py
 
+# Run/reuse an official known-vulnerable/patched firmware pair and emit the fail-closed gate report.
+python scripts/run_real_firmware_pair_aeg.py --pair-id <manifest-pair-id> --fetch --no-llm \
+  --pattern-id <pattern-id> --out docs/pov/<stable-pair-evidence>.json
+
 # Record real known-vulnerable/patched firmware pair evidence on a pattern card.
 python scripts/record_pattern_pair_evidence.py <pattern-id> --kind real_firmware_pair \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \

@@ -38,6 +38,16 @@ def _load_check_module() -> ModuleType:
     return module
 
 
+def _load_build_chain_module() -> ModuleType:
+    script_path = Path(__file__).resolve().with_name("build_verified_chain.py")
+    spec = importlib.util.spec_from_file_location("build_verified_chain", script_path)
+    if spec is None or spec.loader is None:  # pragma: no cover - defensive
+        raise RuntimeError("scripts/build_verified_chain.py is required")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _find_pair(pairs: list[PairSpec], pair_id: str) -> PairSpec:
     for pair in pairs:
         if pair.pair_id == pair_id:
@@ -226,6 +236,138 @@ def _record_reused_run(
     return result
 
 
+def _run_stage_subset(
+    *,
+    run_dir: Path,
+    stages: str,
+    time_budget_s: int,
+    no_llm: bool,
+    quiet: bool,
+    side_root: Path,
+) -> dict[str, Any]:
+    cmd = [
+        "./scout",
+        "stages",
+        str(run_dir),
+        "--stages",
+        stages,
+        "--time-budget-s",
+        str(time_budget_s),
+    ]
+    if no_llm:
+        cmd.append("--no-llm")
+    if quiet:
+        cmd.append("--quiet")
+    stdout_path = side_root / "post_stages_stdout.txt"
+    stderr_path = side_root / "post_stages_stderr.txt"
+    started_at = time.time()
+    with stdout_path.open("wb") as stdout_fh, stderr_path.open("wb") as stderr_fh:
+        proc = subprocess.run(
+            cmd,
+            cwd=_REPO_ROOT,
+            stdout=stdout_fh,
+            stderr=stderr_fh,
+            timeout=_wall_timeout(time_budget_s),
+            check=False,
+        )
+    return {
+        "cmd": cmd,
+        "returncode": int(proc.returncode),
+        "duration_s": round(time.time() - started_at, 3),
+        "stdout_path": str(stdout_path),
+        "stderr_path": str(stderr_path),
+        "status": "success" if proc.returncode == 0 else ("partial" if proc.returncode == 10 else "fatal"),
+    }
+
+
+def _build_verified_chain(run_dir: Path) -> dict[str, Any]:
+    started_at = time.time()
+    try:
+        module = _load_build_chain_module()
+        contract_path, state, reason_codes = module.build_verified_chain(run_dir)
+        return {
+            "status": "success",
+            "returncode": 0,
+            "duration_s": round(time.time() - started_at, 3),
+            "contract_path": str(contract_path),
+            "state": state,
+            "reason_codes": list(reason_codes),
+        }
+    except Exception as exc:
+        return {
+            "status": "fatal",
+            "returncode": 1,
+            "duration_s": round(time.time() - started_at, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+def _postprocess_run(
+    *,
+    pair: PairSpec,
+    side: str,
+    run_dir: Path | None,
+    results_root: Path,
+    stages: str,
+    time_budget_s: int,
+    no_llm: bool,
+    quiet: bool,
+    skip_stages: bool,
+    skip_verified_chain: bool,
+    dry_run: bool,
+) -> dict[str, Any]:
+    side_root = results_root / "runs" / pair.pair_id / side
+    side_root.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {
+        "pair_id": pair.pair_id,
+        "side": side,
+        "run_dir": str(run_dir) if run_dir is not None else "",
+        "stages_requested": stages,
+        "skip_stages": bool(skip_stages),
+        "skip_verified_chain": bool(skip_verified_chain),
+        "dry_run": bool(dry_run),
+        "steps": [],
+    }
+    if run_dir is None:
+        payload["status"] = "missing_run_dir"
+        _write_json(side_root / "postprocess.json", payload)
+        return payload
+    if dry_run:
+        payload["status"] = "dry_run"
+        planned_steps: list[dict[str, Any]] = []
+        if not skip_stages and stages:
+            planned_steps.append(
+                {"kind": "stages", "cmd": ["./scout", "stages", str(run_dir), "--stages", stages]}
+            )
+        if not skip_verified_chain:
+            planned_steps.append({"kind": "build_verified_chain", "run_dir": str(run_dir)})
+        payload["steps"] = planned_steps
+        _write_json(side_root / "postprocess.json", payload)
+        return payload
+
+    steps: list[dict[str, Any]] = []
+    if not skip_stages and stages:
+        steps.append(
+            {
+                "kind": "stages",
+                **_run_stage_subset(
+                    run_dir=run_dir,
+                    stages=stages,
+                    time_budget_s=time_budget_s,
+                    no_llm=no_llm,
+                    quiet=quiet,
+                    side_root=side_root,
+                ),
+            }
+        )
+    if not skip_verified_chain:
+        steps.append({"kind": "build_verified_chain", **_build_verified_chain(run_dir)})
+    payload["steps"] = steps
+    payload["status"] = "success" if all(int(step.get("returncode", 1)) in {0, 10} for step in steps) else "partial"
+    _write_json(side_root / "postprocess.json", payload)
+    return payload
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -246,6 +388,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--force-fetch", action="store_true")
     parser.add_argument("--dry-run", action="store_true", help="Write intended commands without running scout.")
     parser.add_argument("--skip-analyze", action="store_true", help="Only evaluate existing/discovered run directories.")
+    parser.add_argument(
+        "--post-stages",
+        default="fp_verification,exploit_autopoc,poc_validation,exploit_policy",
+        help="Comma-separated stages to rerun after analysis/reuse before pair preflight.",
+    )
+    parser.add_argument("--post-time-budget-s", type=int, default=1800)
+    parser.add_argument("--skip-post-stages", action="store_true")
+    parser.add_argument("--skip-verified-chain", action="store_true")
     parser.add_argument("--vulnerable-run-dir", type=Path, default=None)
     parser.add_argument("--control-run-dir", type=Path, default=None)
     parser.add_argument("--patched-run-dir", type=Path, default=None, help="Alias for --control-run-dir.")
@@ -263,6 +413,7 @@ def main(argv: list[str] | None = None) -> int:
     out_path = args.out or (results_root / "reports" / f"{args.pair_id}.json")
     fetch_result: dict[str, Any] | None = None
     analyze_results: list[dict[str, Any]] = []
+    postprocess_results: list[dict[str, Any]] = []
     try:
         pairs = load_pairs_manifest(args.pairs)
         pair = _find_pair(pairs, args.pair_id)
@@ -348,6 +499,23 @@ def main(argv: list[str] | None = None) -> int:
                     results_root, pair.pair_id, "patched"
                 )
 
+        for side_name, run_path in (("vulnerable", vulnerable_run_dir), ("patched", control_run_dir)):
+            postprocess_results.append(
+                _postprocess_run(
+                    pair=pair,
+                    side=side_name,
+                    run_dir=run_path,
+                    results_root=results_root,
+                    stages=str(args.post_stages),
+                    time_budget_s=int(args.post_time_budget_s),
+                    no_llm=bool(args.no_llm),
+                    quiet=bool(args.quiet),
+                    skip_stages=bool(args.skip_post_stages),
+                    skip_verified_chain=bool(args.skip_verified_chain),
+                    dry_run=bool(args.dry_run),
+                )
+            )
+
         pair_gate = check_module.build_pair_gate_report(
             pair=pair,
             vulnerable_run_dir=vulnerable_run_dir,
@@ -361,6 +529,7 @@ def main(argv: list[str] | None = None) -> int:
             "pair_id": pair.pair_id,
             "fetch": fetch_result,
             "analysis": analyze_results,
+            "postprocess": postprocess_results,
             "pair_gate": pair_gate,
             "promotable_real_firmware_pair": pair_gate.get("promotable_real_firmware_pair") is True,
             "verdict": pair_gate.get("verdict", "unknown"),
@@ -374,6 +543,7 @@ def main(argv: list[str] | None = None) -> int:
             "error": str(exc),
             "fetch": fetch_result,
             "analysis": analyze_results,
+            "postprocess": postprocess_results,
         }
         _write_json(out_path, payload)
         print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n", end="")
