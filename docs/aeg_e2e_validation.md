@@ -67,6 +67,13 @@ the card-level evidence through the recorder rather than manually editing the
 pattern card:
 
 ```bash
+python scripts/run_real_firmware_pair_aeg.py \
+  --pair-id <manifest-pair-id> \
+  --fetch --no-llm \
+  --pattern-id <pattern-id> \
+  --out docs/pov/<stable-pair-evidence>.json
+
+# Or reuse existing authorized lab runs and only evaluate promotion readiness.
 python scripts/check_real_firmware_pair_aeg.py \
   --pair-id <manifest-pair-id> \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
@@ -85,7 +92,7 @@ python scripts/record_pattern_pair_evidence.py <pattern-id> \
   --apply
 ```
 
-The preflight command emits a fail-closed pair report. It checks the manifest
+The run wrapper executes or reuses the selected official pair and then emits a fail-closed pair report through the preflight command. It checks the manifest
 firmware SHA-256 values, re-runs the AEG E2E gate on both runs, lists missing
 gate artifacts, and only returns success when the pair is promotable. The
 recorder performs the same gate checks before mutating a card: vulnerable must

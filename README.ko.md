@@ -74,7 +74,7 @@ SCOUT v3.0.0-rc1의 1순위는 감사 리포팅이 아니라 **AEG(Automated Exp
 | Real known-vulnerable/patched firmware pair | 아직 0개 — broad AEG release claim 전 필수 |
 | 공식 펌웨어 pair 확보 | NETGEAR R7000(CVE-2017-5521), D-Link DIR-859(CVE-2019-17621) official URL + SHA-256 manifest 기록됨 |
 | 실제 펌웨어 AEG 실행 상태 | R7000은 real firmware에서 RAG/AutoPoC 후보까지 도달했지만 동적 runner pass 0, DIR-859는 legacy LZMA SquashFS가 `sasquatch` 호환 extractor를 요구해 extraction 차단 |
-| 승격 전 preflight | `scripts/check_real_firmware_pair_aeg.py`가 펌웨어 SHA-256, vulnerable gate, patched/control fail-closed, 누락 gate artifact를 한 번에 검사 |
+| 승격 전 preflight | `scripts/run_real_firmware_pair_aeg.py`가 공식 pair 분석 실행/재사용 후 `scripts/check_real_firmware_pair_aeg.py`로 펌웨어 SHA-256, vulnerable gate, patched/control fail-closed, 누락 gate artifact를 한 번에 검사 |
 | PoC-in-GitHub 사용 방식 | CVE/repo metadata seed → 사람이 검토한 draft pattern card → retriever |
 | 금지 사항 | raw PoC clone/실행, raw PoC 전체 prompt 주입, reference endpoint/payload 복붙 |
 
@@ -139,7 +139,13 @@ python scripts/fetch_pair_firmware.py \
 # 실제 승인된 lab run 이후 동적 증거 + FP/FPR gate 강제
 python scripts/aeg_e2e_gate.py aiedge-runs/<run_id>
 
-# known-vulnerable/patched pair를 real_firmware_pair로 승격 가능한지 fail-closed 사전 검사
+# known-vulnerable/patched pair 분석 실행/재사용 + real_firmware_pair 승격 preflight
+python scripts/run_real_firmware_pair_aeg.py \
+  --pair-id netgear-r7000-cve-2017-5521 \
+  --fetch --no-llm \
+  --out docs/pov/<stable-pair-evidence>.json
+
+# 이미 승인된 lab run이 있으면 분석을 재사용해서 fail-closed 사전 검사만 수행
 python scripts/check_real_firmware_pair_aeg.py \
   --pair-id netgear-r7000-cve-2017-5521 \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
