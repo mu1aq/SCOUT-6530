@@ -71,14 +71,19 @@ python scripts/record_pattern_pair_evidence.py <pattern-id> \
   --kind real_firmware_pair \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
   --control-run-dir aiedge-runs/<patched-control-run> \
+  --artifact docs/pov/<stable-pair-evidence>.json \
   --vulnerable-firmware-sha256 <sha256> \
   --control-firmware-sha256 <sha256> \
+  --cve CVE-YYYY-NNNN \
   --apply
 ```
 
 This command re-runs the AEG E2E gate on both runs. It requires the vulnerable
 run to pass, requires complete gate artifacts on both sides, and requires the
-patched/control run to fail at least one dynamic proof check.
+patched/control run to fail at least one dynamic proof check. For
+`real_firmware_pair`, the recorder also requires a stable evidence artifact,
+both firmware SHA-256 values, and a CVE or target-family label so ad-hoc lab
+runs cannot be mislabeled as release-grade firmware-pair proof.
 
 ## Real-run workflow
 

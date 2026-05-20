@@ -110,7 +110,11 @@ python scripts/check_exploit_pattern_evidence.py
 # Record real known-vulnerable/patched firmware pair evidence on a pattern card.
 python scripts/record_pattern_pair_evidence.py <pattern-id> --kind real_firmware_pair \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
-  --control-run-dir aiedge-runs/<patched-control-run> --apply
+  --control-run-dir aiedge-runs/<patched-control-run> \
+  --artifact docs/pov/<stable-pair-evidence>.json \
+  --vulnerable-firmware-sha256 <sha256> \
+  --control-firmware-sha256 <sha256> \
+  --cve CVE-YYYY-NNNN --apply
 ```
 
 ---

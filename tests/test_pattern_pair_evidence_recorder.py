@@ -98,6 +98,7 @@ def test_record_real_firmware_pair_evidence_updates_card_and_gate_report(tmp_pat
         control_firmware_sha256="b" * 64,
         cve="CVE-2024-1781",
         target_family="totolink-cgi-command-injection",
+        artifact="docs/pov/totolink_cmdinj_real_pair.json",
         notes="Authorized lab pair with vulnerable firmware and patched/control firmware.",
     )
 
@@ -115,6 +116,40 @@ def test_record_real_firmware_pair_evidence_updates_card_and_gate_report(tmp_pat
     assert "cgi_param_cmd_injection" not in cast(list[str], payload["missing_pair_evidence"])
 
 
+
+
+def test_real_firmware_pair_requires_stable_firmware_metadata(tmp_path: Path) -> None:
+    vulnerable = tmp_path / "runs" / "known-vulnerable"
+    control = tmp_path / "runs" / "patched-control"
+    _build_passing_run(vulnerable)
+    _build_control_run(control)
+
+    with pytest.raises(PairEvidenceError, match="stable firmware metadata"):
+        build_pair_evidence(
+            "cgi_param_cmd_injection",
+            kind="real_firmware_pair",
+            vulnerable_run_dir=vulnerable,
+            control_run_dir=control,
+        )
+
+
+def test_synthetic_pair_does_not_require_real_firmware_metadata(tmp_path: Path) -> None:
+    vulnerable = tmp_path / "runs" / "synthetic-vulnerable"
+    control = tmp_path / "runs" / "synthetic-control"
+    _build_passing_run(vulnerable)
+    _build_control_run(control)
+
+    evidence = build_pair_evidence(
+        "cgi_param_cmd_injection",
+        kind="synthetic_pair",
+        vulnerable_run_dir=vulnerable,
+        control_run_dir=control,
+    )
+
+    assert evidence["kind"] == "synthetic_pair"
+    assert "vulnerable_firmware_sha256" not in evidence
+
+
 def test_pair_evidence_rejects_missing_control_artifacts(tmp_path: Path) -> None:
     vulnerable = tmp_path / "runs" / "known-vulnerable"
     control = tmp_path / "runs" / "missing-control"
@@ -128,6 +163,10 @@ def test_pair_evidence_rejects_missing_control_artifacts(tmp_path: Path) -> None
             kind="real_firmware_pair",
             vulnerable_run_dir=vulnerable,
             control_run_dir=control,
+            artifact="docs/pov/test-real-pair.json",
+            vulnerable_firmware_sha256="a" * 64,
+            control_firmware_sha256="b" * 64,
+            cve="CVE-2024-1781",
         )
 
 
@@ -144,6 +183,10 @@ def test_pair_evidence_rejects_control_that_only_fails_fpr(tmp_path: Path) -> No
             kind="real_firmware_pair",
             vulnerable_run_dir=vulnerable,
             control_run_dir=control,
+            artifact="docs/pov/test-real-pair.json",
+            vulnerable_firmware_sha256="a" * 64,
+            control_firmware_sha256="b" * 64,
+            cve="CVE-2024-1781",
         )
 
 
@@ -168,6 +211,14 @@ def test_record_pattern_pair_evidence_cli_dry_run_and_apply(tmp_path: Path, caps
             str(patterns_dir),
             "--evidence-id",
             "config_real_pair",
+            "--artifact",
+            "docs/pov/config_real_pair.json",
+            "--vulnerable-firmware-sha256",
+            "a" * 64,
+            "--control-firmware-sha256",
+            "b" * 64,
+            "--cve",
+            "CVE-2024-1781",
         ]
     )
     assert rc == 0
@@ -187,6 +238,14 @@ def test_record_pattern_pair_evidence_cli_dry_run_and_apply(tmp_path: Path, caps
             str(patterns_dir),
             "--evidence-id",
             "config_real_pair",
+            "--artifact",
+            "docs/pov/config_real_pair.json",
+            "--vulnerable-firmware-sha256",
+            "a" * 64,
+            "--control-firmware-sha256",
+            "b" * 64,
+            "--cve",
+            "CVE-2024-1781",
             "--apply",
         ]
     )
