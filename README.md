@@ -98,6 +98,9 @@ python scripts/draft_exploit_pattern_card.py data/exploit_references/candidates/
 
 # After a real authorized lab run, enforce dynamic proof + FP/FPR evidence
 python scripts/aeg_e2e_gate.py aiedge-runs/<run_id>
+
+# CI-safe AEG regression: vulnerable lab service must pass, patched control must fail closed
+python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pair
 ```
 
 ---

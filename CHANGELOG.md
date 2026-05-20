@@ -24,7 +24,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
-- _No unreleased changes yet._
+- **Synthetic AEG vulnerable/control pair**: Added `scripts/run_aeg_synthetic_pair.py` and tests that execute the real AutoPoC runner, `poc_validation`, `verified_chain`, and FP/FPR gate against a local vulnerable service and patched/control service. The vulnerable case must pass; the patched/control case must fail closed as FP evidence.
 
 ## [2.8.0] — 2026-05-18
 

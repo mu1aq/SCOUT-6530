@@ -33,6 +33,27 @@ python scripts/aeg_e2e_gate.py aiedge-runs/<run_id> --out aiedge-runs/<run_id>/a
 
 The script exits `0` only when every dynamic proof and FP/FPR check passes. It exits `31` on fail-closed evidence gaps.
 
+## Synthetic vulnerable/control pair
+
+CI also carries a synthetic AEG pair that exercises the real AutoPoC runner,
+`poc_validation`, `verified_chain`, and FP/FPR gate over two local loopback lab
+services:
+
+- **vulnerable** service returns a privileged `SCOUT_LEAK` proof and must pass;
+- **patched/control** service accepts the same probes without leaking and must fail closed;
+- the patched/control case also records high-severity FP and FPR evidence so the gate proves it is not merely checking runner status.
+
+Run it locally:
+
+```bash
+python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pair
+cat /tmp/scout-aeg-synthetic-pair/synthetic_aeg_pair_summary.json
+```
+
+The synthetic pair is a CI-safe regression proxy. It proves the AEG gate can
+separate a reproducible lab proof from a patched/control false positive. It does
+not replace a real firmware known-vulnerable/patched pair before release claims.
+
 ## Real-run workflow
 
 ```bash
