@@ -61,6 +61,24 @@ card as synthetic pair evidence. Inspect card-level readiness with:
 python scripts/check_exploit_pattern_evidence.py
 ```
 
+When a known-vulnerable/patched firmware pair has completed the same gate, record
+the card-level evidence through the recorder rather than manually editing the
+pattern card:
+
+```bash
+python scripts/record_pattern_pair_evidence.py <pattern-id> \
+  --kind real_firmware_pair \
+  --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
+  --control-run-dir aiedge-runs/<patched-control-run> \
+  --vulnerable-firmware-sha256 <sha256> \
+  --control-firmware-sha256 <sha256> \
+  --apply
+```
+
+This command re-runs the AEG E2E gate on both runs. It requires the vulnerable
+run to pass, requires complete gate artifacts on both sides, and requires the
+patched/control run to fail at least one dynamic proof check.
+
 ## Real-run workflow
 
 ```bash

@@ -104,6 +104,11 @@ python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pa
 
 # vulnerable/control 증거가 있는 Exploit Pattern RAG card 확인
 python scripts/check_exploit_pattern_evidence.py
+
+# 실제 known-vulnerable/patched 펌웨어 pair 증거를 pattern card에 기록
+python scripts/record_pattern_pair_evidence.py <pattern-id> --kind real_firmware_pair \
+  --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
+  --control-run-dir aiedge-runs/<patched-control-run> --apply
 ```
 
 ---

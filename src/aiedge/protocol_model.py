@@ -284,7 +284,7 @@ def _build_models(surfaces: list[_Surface], decisions: list[_Decision]) -> list[
                     "surface_confidence": surface.confidence if surface is not None else 0.0,
                 },
                 "score": decision.score,
-                "evidence_refs": refs[:14],
+                "evidence_refs": cast(JsonValue, refs[:14]),
             }
         )
 
