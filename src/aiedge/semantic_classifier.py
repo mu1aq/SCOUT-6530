@@ -50,6 +50,14 @@ _DANGEROUS_APIS: frozenset[str] = frozenset(
         "gets",
         "recv",
         "read",
+        "curl_easy_setopt",
+        "curl_easy_perform",
+        "nvram_get",
+        "nvram_set",
+        "nvram_safe_get",
+        "nvram_safe_set",
+        "msgrcv",
+        "msgsnd",
     }
 )
 
@@ -69,6 +77,7 @@ _HIGH_RISK_CATEGORIES: frozenset[str] = frozenset(
     {
         "command_handler",
         "auth_check",
+        "network_io",
     }
 )
 
@@ -135,7 +144,8 @@ def _build_deep_analysis_prompt(func_name: str, body: str) -> str:
         "1. Command injection vectors\n"
         "2. Authentication bypass opportunities\n"
         "3. Buffer overflow potential\n"
-        "4. Missing input validation\n\n"
+        "4. Missing input validation\n"
+        "5. Insecure logical configurations (e.g., TLS verification disabled in libcurl)\n\n"
         "## Output Format\n"
         "Return ONLY a JSON object (no markdown fences):\n"
         '{\n  "function_name": "<name>",\n'

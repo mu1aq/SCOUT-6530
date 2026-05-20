@@ -44,7 +44,7 @@ _IPC_EDGE_TYPES: frozenset[str] = frozenset(
     }
 )
 
-_MAX_CHAINS = 50
+_MAX_CHAINS = 1000000
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -599,8 +599,8 @@ class ChainConstructorStage:
 
             # Build source->sink chains when both exist
             if sources and sinks:
-                for src in sources[:3]:
-                    for sink in sinks[:3]:
+                for src in sources:
+                    for sink in sinks:
                         if chain_id >= _MAX_CHAINS:
                             break
                         chain_id += 1
@@ -1279,17 +1279,17 @@ class ChainConstructorStage:
         # Collect cross_strings for LLM prompt
         cross_strings_for_prompt: dict[str, list[str]] = {}
         if cross_strings:
-            cross_strings_for_prompt = dict(list(cross_strings.items())[:10])
+            cross_strings_for_prompt = dict(list(cross_strings.items()))
 
         # --- Step 3: LLM chain reasoning (opus) ---
         llm_chains: list[dict[str, JsonValue]] = []
         if not self.no_llm and findings:
             driver = resolve_driver()
             if driver.available():
-                findings_subset = findings[:20]
+                findings_subset = findings
                 prompt = _build_chain_prompt(
                     _truncate_json(findings_subset),
-                    _truncate_json(ipc_edges[:20]),
+                    _truncate_json(ipc_edges),
                     _truncate_json(cross_strings_for_prompt),
                 )
                 result = driver.execute(

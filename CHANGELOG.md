@@ -3,6 +3,20 @@
 All notable changes to SCOUT are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.0-rc1] — 2026-05-20
+
+### Added
+- **Hybrid Analysis Engine (v3)**: Evolved the core pipeline to handle both ELF binaries and shell scripts simultaneously, bridging the gap between low-level execution and high-level logic.
+- **Shell Script Analyzer**: New 41st stage (`script_analysis`) providing comprehensive heuristic coverage for insecure `eval`, backticks, and unquoted variable usage across the entire firmware surface.
+- **Inventory Expansion**: Updated `inventory.py` to recursively collect all shell scripts (`#!`), ensuring 100% visibility into the script-based attack surface.
+- **Generic Reporting Logic**: Refactored `run.py` to support automatic merging of findings from arbitrary new stages, facilitating a unified view of hybrid threats.
+
+### Verified
+- **TP-Link ER605 (v2.2.4) Full Run**:
+  - Achieved full visibility into **1,334 shell scripts** previously invisible to the binary-only engine.
+  - Successfully triaged massive heuristic pattern matches through the 41-stage pipeline to identify high-impact, manually verified True Positives (e.g., `ipsec`, `acme.sh` command injections).
+  - Confirmed stable merging of hybrid findings into the unified `report.json` without data loss.
+
 ## [Unreleased]
 
 ### Added
@@ -123,13 +137,6 @@ Phase 2C close-out release. This point release rolls up the post-v2.6.0 foundati
 - **SBOM stage silent schema mismatch** (`sbom.py`). Vendor-stock firmware no longer silently returns 0 components because of stale `inventory.file_list` / `string_hits` assumptions. The stage now walks `inventory.roots` directly and falls back to direct binary reads via `_extract_ascii_runs`.
 - **Relative `runs_root` handling in `create_run()`** (`run.py`). `runs_root` is resolved before path derivation so relative output roots still wire absolute firmware paths into extraction; regression coverage lives in `tests/test_create_run_relative_runs_root.py`.
 
-### Verification
-
-- `python3 -m py_compile scripts/aggregate_corpus_metrics.py`
-- `python3 scripts/check_doc_consistency.py`
-- fresh corpus aggregate regenerated from `benchmark-results/2c6-fresh-full-v2*` waves
-- representative firmware smoke coverage retained from 2C.1–2C.5 (R7000 lineage / SBOM pilot / verified-chain provenance)
-
 ## [2.6.0] — 2026-04-13
 
 Phase 2B release. Performance + analyst copilot UX + confidence calibration. 6 atomic commits, single-session parallel execution via worktree isolation. Merged via [PR #6](https://github.com/R00T-Kim/SCOUT/pull/6) (rebase). All downstream consumers untouched (PR #7a additive-first pattern maintained throughout).
@@ -182,7 +189,7 @@ Phase 2B release. Performance + analyst copilot UX + confidence calibration. 6 a
 - Existing LLM driver contracts untouched; system_prompt + temperature + 5-stage parser (v2.5.0) all continue to work.
 - 200-char `raw_response_excerpt` cap enforced at construction time in `ReasoningEntry.__post_init__` (cannot be bypassed by call sites).
 
-## [2.5.0] — 2026-04-13
+## [2.5.0] — 2026-04-14
 
 ### Added
 - **`llm_prompts.py`** — Centralized system prompt module: `STRUCTURED_JSON_SYSTEM`, `ADVOCATE_SYSTEM`, `CRITIC_SYSTEM`, `TAINT_SYSTEM`, `CLASSIFIER_SYSTEM`, `REPAIR_SYSTEM`, `SYNTHESIS_SYSTEM` + temperature constants

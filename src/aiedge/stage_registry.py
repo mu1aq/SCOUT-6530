@@ -26,6 +26,7 @@ from .surfaces import SurfacesStage
 from .threat_model import ThreatModelStage
 from .tooling import ToolingStage
 from .web_ui import WebUiStage
+from .script_analyzer import ScriptAnalyzer
 
 
 class _RunInfoLike(Protocol):
@@ -356,6 +357,16 @@ def _make_inventory_stage(
         string_scan_max_files=max_files,
         string_scan_max_total_matches=max_matches,
     )
+
+
+def _make_script_analysis_stage(
+    info: _RunInfoLike,
+    source_input_path: str | None,
+    remaining_s: Callable[[], float],
+    no_llm: bool,
+) -> Stage:
+    _ = source_input_path, remaining_s, no_llm
+    return ScriptAnalyzer(info)
 
 
 def _make_firmware_profile_stage(
@@ -737,6 +748,7 @@ _STAGE_FACTORIES: dict[str, StageFactory] = {
     "carving": _make_carving_stage,
     "firmware_profile": _make_firmware_profile_stage,
     "inventory": _make_inventory_stage,
+    "script_analysis": _make_script_analysis_stage,
     "ghidra_analysis": _make_ghidra_analysis_stage,
     "semantic_classification": _make_semantic_classification_stage,
     "sbom": _make_sbom_stage,

@@ -1,0 +1,400 @@
+{
+  "chains": [
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> execve",
+      "id": "chain_001",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "execve"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> gets",
+      "id": "chain_002",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and gets(). Hardening: no_pie",
+          "finding_id": "gets",
+          "primitive": "gets"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> popen",
+      "id": "chain_003",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and popen(). Hardening: no_pie",
+          "finding_id": "popen",
+          "primitive": "popen"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> sprintf",
+      "id": "chain_004",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and sprintf(). Hardening: no_pie",
+          "finding_id": "sprintf",
+          "primitive": "sprintf"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> strcat",
+      "id": "chain_005",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and strcat(). Hardening: no_pie",
+          "finding_id": "strcat",
+          "primitive": "strcat"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> strcpy",
+      "id": "chain_006",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and strcpy(). Hardening: no_pie",
+          "finding_id": "strcpy",
+          "primitive": "strcpy"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> system",
+      "id": "chain_007",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and system(). Hardening: no_pie",
+          "finding_id": "system",
+          "primitive": "system"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.32000000000000006,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> vsprintf",
+      "id": "chain_008",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and vsprintf(). Hardening: no_pie",
+          "finding_id": "vsprintf",
+          "primitive": "vsprintf"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.36000000000000004,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> execve",
+      "id": "chain_009",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Source-sink graph path: http_path source -> stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox -> execve()",
+          "finding_id": "execve",
+          "primitive": "execve"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.36000000000000004,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> popen",
+      "id": "chain_010",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Source-sink graph path: http_path source -> stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox -> popen()",
+          "finding_id": "popen",
+          "primitive": "popen"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.36000000000000004,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> system",
+      "id": "chain_011",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Source-sink graph path: http_path source -> stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox -> system()",
+          "finding_id": "system",
+          "primitive": "system"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> execve",
+      "id": "chain_012",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both execve() and execve(). Hardening: unknown",
+          "finding_id": "execve",
+          "primitive": "execve"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> popen",
+      "id": "chain_013",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both execve() and popen(). Hardening: unknown",
+          "finding_id": "popen",
+          "primitive": "popen"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> system",
+      "id": "chain_014",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both execve() and system(). Hardening: unknown",
+          "finding_id": "system",
+          "primitive": "system"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> execve",
+      "id": "chain_015",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both popen() and execve(). Hardening: unknown",
+          "finding_id": "execve",
+          "primitive": "execve"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> popen",
+      "id": "chain_016",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",
+          "finding_id": "execve",
+          "primitive": "external_input"
+        },
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both popen() and popen(). Hardening: unknown",
+          "finding_id": "popen",
+          "primitive": "popen"
+        }
+      ]
+    },
+    {
+      "binary": "stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox",
+      "chain_type": "same_binary",
+      "confidence": 0.26,
+      "description": "Same-binary chain in stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox: gets -> system",
+      "id": "chain_017",
+      "method": "static",
+      "missing_evidence": [
+        "Dynamic validation of data flow",
+        "Runtime confirmation of exploitability"
+      ],
+      "steps": [
+        {
+          "evidence": "Static inference: stages/extraction/_firmware.bin.extracted/squashfs-root/bin/busybox imports both gets() and execve(). Hardening: no_pie",

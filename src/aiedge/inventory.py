@@ -587,6 +587,11 @@ _RISKY_BINARY_SYMBOLS: dict[str, bytes] = {
     "system": b"system",
     "popen": b"popen",
     "execve": b"execve",
+    "curl_easy_setopt": b"curl_easy_setopt",
+    "nvram_get": b"nvram_get",
+    "nvram_set": b"nvram_set",
+    "msgrcv": b"msgrcv",
+    "msgsnd": b"msgsnd",
 }
 _FORTIFY_SYMBOLS: dict[str, str] = {
     "__sprintf_chk": "sprintf",
@@ -848,7 +853,7 @@ def _scan_binary_analysis(
     *,
     run_dir: Path,
     errors: list[dict[str, JsonValue]],
-    max_binaries: int = 400,
+    max_binaries: int = 1000000,
     max_bytes_per_file: int = 512 * 1024,
     max_hits: int = 200,
 ) -> tuple[dict[str, JsonValue], list[dict[str, JsonValue]], int]:
@@ -912,15 +917,14 @@ def _scan_binary_analysis(
             elf_binaries += 1
             arch_counts[arch] = int(arch_counts.get(arch, 0) + 1)
 
-        # --- Risky symbol detection: prefer .dynstr, fall back to byte scan ---
+        # --- Risky symbol detection: check BOTH .dynstr and binary prefix ---
         dynstr = extract_dynstr_bytes(path) if isinstance(arch, str) else b""
-        use_dynstr = len(dynstr) > 0
-        search_blob = dynstr if use_dynstr else sample
-        symbol_source = "dynstr" if use_dynstr else "binary_scan"
+        search_blob = dynstr + b" " + sample
+        symbol_source = "hybrid_scan"
 
         # Detect FORTIFY_SOURCE symbols in dynstr
         fortified_bases: set[str] = set()
-        if use_dynstr:
+        if len(dynstr) > 0:
             for fortify_sym, base_sym in _FORTIFY_SYMBOLS.items():
                 if fortify_sym.encode() in dynstr:
                     fortified_bases.add(base_sym)
@@ -1038,6 +1042,9 @@ def _inventory_quality_assessment(
     }
 
 
+    return False
+
+
 def _looks_binary(
     path: Path,
     *,
@@ -1046,29 +1053,34 @@ def _looks_binary(
     errors: list[dict[str, JsonValue]] | None = None,
 ) -> bool:
     try:
-        st = path.stat()
-    except OSError as exc:
-        if isinstance(run_dir, Path) and isinstance(errors, list):
-            _append_error(errors, run_dir=run_dir, path=path, op="stat", exc=exc)
-        return False
-
-    if stat.S_ISREG(st.st_mode) and (st.st_mode & 0o111):
-        return True
-
-    if path.suffix.lower() in {".so", ".a", ".o", ".elf", ".bin", ".exe"}:
-        return True
-
-    try:
         with path.open("rb") as f:
-            chunk = f.read(sniff_bytes)
+            magic = f.read(4)
     except OSError as exc:
         if isinstance(run_dir, Path) and isinstance(errors, list):
-            _append_error(errors, run_dir=run_dir, path=path, op="read", exc=exc)
+            _append_error(errors, run_dir=run_dir, path=path, op="read_binary_magic", exc=exc)
         return False
 
-    if b"\x00" in chunk:
+    if magic.startswith(b"\x7fELF") or magic.startswith(b"MZ") or magic in {b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf"}:
+        return True
+    if b"\x00" in magic:
         return True
     return False
+
+
+def _is_script(
+    path: Path,
+    *,
+    run_dir: Path | None = None,
+    errors: list[dict[str, JsonValue]] | None = None,
+) -> bool:
+    try:
+        with path.open("rb") as f:
+            magic = f.read(2)
+    except OSError as exc:
+        if isinstance(run_dir, Path) and isinstance(errors, list):
+            _append_error(errors, run_dir=run_dir, path=path, op="read_script_magic", exc=exc)
+        return False
+    return magic == b"#!"
 
 
 def _find_rootfs_candidates(
@@ -1198,7 +1210,9 @@ _STRING_PATTERNS: dict[str, re.Pattern[str]] = {
 }
 
 DEFAULT_STRING_SCAN_MAX_FILES = 2000
-DEFAULT_STRING_SCAN_MAX_TOTAL_MATCHES = 5000
+DEFAULT_STRING_SCAN_MAX_PATHS = 1000000
+_MAX_ALERTS = 1000000
+_MAX_CHAINS = 1000000
 DEFAULT_STRING_SCAN_MAX_BYTES_PER_FILE = 256 * 1024
 
 
@@ -1209,7 +1223,7 @@ def _scan_string_hits(
     errors: list[dict[str, JsonValue]] | None = None,
     max_files: int = DEFAULT_STRING_SCAN_MAX_FILES,
     max_bytes_per_file: int = DEFAULT_STRING_SCAN_MAX_BYTES_PER_FILE,
-    max_total_matches: int = DEFAULT_STRING_SCAN_MAX_TOTAL_MATCHES,
+    max_total_matches: int = DEFAULT_STRING_SCAN_MAX_PATHS,
 ) -> tuple[dict[str, int], list[dict[str, JsonValue]], int]:
     counts: dict[str, int] = {k: 0 for k in _STRING_PATTERNS}
     samples: list[dict[str, JsonValue]] = []
@@ -1366,7 +1380,7 @@ def _write_inventory_payload(
 class InventoryStage:
     firmware_name: str = "firmware.bin"
     string_scan_max_files: int = DEFAULT_STRING_SCAN_MAX_FILES
-    string_scan_max_total_matches: int = DEFAULT_STRING_SCAN_MAX_TOTAL_MATCHES
+    string_scan_max_total_matches: int = DEFAULT_STRING_SCAN_MAX_PATHS
     string_scan_max_bytes_per_file: int = DEFAULT_STRING_SCAN_MAX_BYTES_PER_FILE
 
     @property
@@ -1641,13 +1655,17 @@ class InventoryStage:
 
             binaries = 0
             configs = 0
+            scripts: list[str] = []
             for p in all_files:
                 if _is_config_file(p):
                     configs += 1
                 if _looks_binary(p, run_dir=ctx.run_dir, errors=errors):
                     binaries += 1
+                elif _is_script(p, run_dir=ctx.run_dir, errors=errors):
+                    scripts.append(_rel_to_run_dir(ctx.run_dir, p))
             binaries_seen = int(binaries)
             configs_seen = int(configs)
+            scripts_seen = int(len(scripts))
 
             string_counts, string_samples, skipped_string_files = _scan_string_hits(
                 all_files,
@@ -1712,6 +1730,7 @@ class InventoryStage:
                 "files": int(len(all_files)),
                 "binaries": int(binaries),
                 "configs": int(configs),
+                "scripts": int(scripts_seen),
                 "string_hits": int(string_hits_total),
                 "risky_binary_hits": int(binary_risk_hits_seen),
             }
@@ -1764,6 +1783,7 @@ class InventoryStage:
                     JsonValue, [_rel_to_run_dir(ctx.run_dir, r) for r in roots]
                 ),
                 "summary": summary,
+                "scripts": cast(JsonValue, scripts),
                 "service_candidates": service_candidates,
                 "services": services,
                 "quality": quality,
@@ -1825,6 +1845,7 @@ class InventoryStage:
                     {
                         "evidence": evidence,
                         "summary": summary,
+                        "scripts": scripts,
                         "service_candidates": service_candidates,
                         "services": services,
                         "extracted_dir": _rel_to_run_dir(ctx.run_dir, extracted_dir),

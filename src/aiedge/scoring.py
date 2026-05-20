@@ -68,6 +68,8 @@ class PriorityInputs:
     reachability: str | None
     backport_present: bool
     cvss_base: float | None
+    is_chained: bool = False
+    is_high_impact_sink: bool = False
 
 
 _PRIORITY_WEIGHTS: dict[str, float] = {
@@ -118,6 +120,12 @@ def compute_priority_score(inputs: PriorityInputs) -> float:
 
     if inputs.backport_present:
         score -= BACKPORT_PENALTY
+    
+    # --- Context-aware boosts ---
+    if inputs.is_chained:
+        score += 0.35  # Major boost for findings that are part of an exploit chain
+    if inputs.is_high_impact_sink:
+        score += 0.25  # Boost for critical logical sinks (CURL, NVRAM, System)
 
     if score < 0.0:
         return 0.0

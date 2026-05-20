@@ -3,21 +3,21 @@
   <strong>한국어</strong>
 </p>
 
-# SCOUT
+# SCOUT (v3.0.0-rc1)
 
-### 결정적 증거 타임라인 기반의 펌웨어 보안 분석가 코파일럿
+### 결정론적 증거 체인을 활용한 하이브리드 펌웨어 보안 분석 코파일럿
 
-**SCOUT는 가공되지 않은 펌웨어 블롭을 실행 가능한 증거 기반의 보안 도시에(dossier)로 변환하는 심층 분석 파이프라인입니다.**
+**SCOUT은 가공되지 않은 펌웨어 바이너리를 분석하여, 증거 기반의 실행 가능한 보안 보고서로 변환하는 딥 분석 파이프라인입니다. 이제 바이너리와 쉘 스크립트를 동시에 감사하는 하이브리드 분석 엔진을 탑재했습니다.**
 
-*기존 스캐너들이 대량 분석과 속도에 집중할 때, SCOUT는 분석가를 위한 고충실도 코파일럿 역할을 수행합니다. 단순한 CVE 리스트를 넘어, 익스플로잇 체인을 재구성하고, 증거 트레일을 통해 판단 근거를 설명하며, 새로운 Exploit Pattern RAG 엔진을 사용해 검증된 PoC를 생성합니다.*
+*기존의 스캐너들이 탐지 수량과 속도에만 치중할 때, SCOUT은 분석가를 위한 고신뢰도 코파일럿 역할을 수행합니다. 단순한 CVE 목록을 나열하는 대신, ELF 바이너리와 쉘 스크립트를 가로지르는 익스플로잇 체인을 재구성하고, 증거 기반의 추론 과정을 통해 검증된 PoC를 생성합니다.*
 
 <br />
 
 <div align="center">
-  <a href="#what-you-can-do">할 수 있는 일</a> •
-  <a href="#why-scout">왜 SCOUT인가?</a> •
+  <a href="#what-you-can-do">주요 기능</a> •
+  <a href="#why-scout">SCOUT의 강점</a> •
   <a href="#quick-start">빠른 시작</a> •
-  <a href="#key-features">주요 기능</a> •
+  <a href="#key-features">핵심 특징</a> •
   <a href="CHANGELOG.md">변경 이력</a>
 </div>
 
@@ -28,7 +28,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Zero Deps](https://img.shields.io/badge/Dependencies-Zero_(stdlib)-orange?style=for-the-badge)]()
-[![Version](https://img.shields.io/badge/Version-2.8.0-red?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-3.0.0--rc1-red?style=for-the-badge)]()
 
 [![SARIF](https://img.shields.io/badge/SARIF-2.1.0-blue?style=for-the-badge&logo=github)]()
 [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX_1.6+VEX-brightgreen?style=for-the-badge)]()
@@ -38,11 +38,11 @@
 
 <table>
 <tr>
-<td align="center"><strong>1,123</strong><br/><sub>코퍼스 타깃</sub></td>
+<td align="center"><strong>1,123</strong><br/><sub>분석 대상 펌웨어</sub></td>
 <td align="center"><strong>98.8%</strong><br/><sub>분석 성공률</sub></td>
-<td align="center"><strong>146k+</strong><br/><sub>CVE 매칭</sub></td>
-<td align="center"><strong>99.3%</strong><br/><sub>오탐 감소 (LLM)</sub></td>
-<td align="center"><strong>v2.8.0</strong><br/><sub>익스플로잇 RAG 탑재</sub></td>
+<td align="center"><strong>1,300+</strong><br/><sub>스크립트 전수 조사</sub></td>
+<td align="center"><strong>99.3%</strong><br/><sub>오탐 감소율 (LLM)</sub></td>
+<td align="center"><strong>v3.0.0-rc1</strong><br/><sub>하이브리드 엔진</sub></td>
 </tr>
 </table>
 
@@ -50,610 +50,56 @@
 
 ---
 
-<h2 id="what-you-can-do">🚀 SCOUT으로 할 수 있는 일</h2>
+<h2 id="what-you-can-do">🚀 SCOUT으로 할 수 있는 것</h2>
 
-- **자동화된 트리아지**: 펌웨어 블롭만 넣으면 `confidence`와 `priority_score`로 정렬된 고충실도 취약점 리스트를 얻을 수 있습니다.
-- **심층 익스플로잇 발견**: 기존 정적 분석으로는 찾기 힘든 `Web -> IPC -> Config -> Daemon`으로 이어지는 복합 체인을 식별합니다.
-- **PoC 자동 생성**: **Exploit Pattern RAG**를 활용해 과거 공격 패턴을 기반으로 현재 타깃에 최적화된 다단계(stateful) PoV 모듈을 생성합니다.
-- **증거 기반 조사**: Glassmorphism 웹 대시보드나 인터랙티브 TUI를 통해 디컴파일된 P-code 테인트 경로와 추론 트레일을 직접 확인할 수 있습니다.
-- **규제 대응 리포팅**: GitHub Security를 위한 SARIF, FDA/CRA 대응을 위한 CycloneDX 1.6 SBOM+VEX, 공급망 보안을 위한 SLSA L2 인증서를 생성합니다.
+- **하이브리드 분석**: 단일 파이프라인에서 ELF 바이너리와 쉘 스크립트를 통합 감사합니다.
+- **심층 익스플로잇 탐지**: `Web -> IPC -> Config -> Daemon` 또는 `Shell -> Binary`로 이어지는 복합 공격 체인을 탐지합니다.
+- **PoC 자동 생성**: **Exploit Pattern RAG**를 활용하여 즉시 검증 가능한 Proof-of-Vulnerability 모듈을 생성합니다.
+- **증거 기반 조사**: 글래스모피즘 웹 대시보드를 통해 디컴파일된 P-code와 쉘 로직을 시각적으로 조사합니다.
+- **규제 준수 보고**: SARIF, CycloneDX 1.6 SBOM+VEX, SLSA L2 증명서를 생성합니다.
 
 ---
 
-<h2 id="why-scout">💎 SCOUT의 장점</h2>
+<h2 id="why-scout">💎 SCOUT의 강점</h2>
 
-> **[1] 해시 기반의 증거 추적성 (Evidence Lineage)**
-> 모든 발견 사항은 특정 파일 경로, 바이트 오프셋, SHA-256 해시와 결합되어 있습니다. "블랙박스 추측"이 아닌, 블롭에서 판정까지 이어지는 추적 가능한 추론 트레일을 제공합니다.
+> **[1] 하이브리드 분석 엔진 (v3)**
+> 바이너리 레벨의 실행과 상위 레벨의 쉘 로직 사이의 간극을 메웁니다. 펌웨어 실행 표면에 대한 100% 가시성을 제공합니다.
 
-> **[2] 지능형 분석가 코파일럿**
-> 내장된 LLM tribunal (Advocate/Critic) 시스템이 오탐(FP)을 99.3% 줄여줍니다. SCOUT은 분석가를 대체하는 것이 아니라, 당신이 확신을 갖고 판정할 수 있도록 증거와 근거를 제시합니다.
+> **[2] 해시 기반의 증거 추적성**
+> 모든 탐지 결과는 특정 파일 경로, 바이트 오프셋, SHA-256 해시와 연결됩니다. 블랙박스 기반의 추측이 아닌, 추적 가능한 추론 경로만을 제공합니다.
 
-> **[3] 의존성 제로 (Pure Stdlib)**
-> `pip install` 지옥이 없습니다. SCOUT은 순수 Python 3.10+ 표준 라이브러리만으로 동작합니다. 폐쇄망 실험실이나 보안이 엄격한 환경에서도 즉시 배포 가능합니다.
+> **[3] 지능형 분석가 코파일럿**
+> 내장된 LLM Tribunal(찬반 토론) 시스템이 41단계 검증을 통해 오탐(False Positive)을 99.3% 제거합니다.
 
-> **[4] 채널 인식형 익스플로잇 RAG (v2.8.0)**
-> SCOUT은 취약점의 *맥락*을 이해합니다. 단순한 소켓 스크립트가 아니라, 구조화된 공격 패턴을 현재 타깃의 채널과 상태에 맞춰 "적응"시킨 정교한 다단계 PoC를 생성합니다.
+> **[4] 의존성 제로 (Pure Stdlib)**
+> `pip install`의 번거로움이 없습니다. 파이썬 3.10+ 표준 라이브러리만으로 구현되어 폐쇄망이나 제한된 환경에서도 즉시 배포 가능합니다.
 
 ---
 
 <h2 id="quick-start">⚡ 빠른 시작</h2>
 
 ```bash
-# 펌웨어 이미지 분석
+# 펌웨어 분석 시작 (하이브리드 모드 기본 활성화)
 ./scout analyze firmware.bin
 
-# 웹 대시보드에서 결과 확인
+# 웹 대시보드 실행
 ./scout serve aiedge-runs/<run_id> --port 8080
 
-# 터미널 UI(TUI)로 심층 분석
+# 터미널 UI(TUI)로 상세 조사
 ./scout ti
 ```
 
 ---
 
-> [!TIP]
-> **v2.8.0 핵심 변화**
-> - **Exploit Pattern RAG**: 상태 기반 PoC 생성을 위한 메타데이터 기반 참조 검색 도입.
-> - **참조 오염 방지 가드 (Contamination Guard)**: 참조 샘플의 특정 아티팩트가 생성된 PoC로 유출되는 것을 자동 차단.
-> - **채널 분류 체계 정렬**: 스테이지 전반의 채널 식별(Web, Config, IPC) 표준화.
-
----
-> - **범용 outbound response-chain 모델링.** `exploitability_dossier`가 upstream-service marker, response field, parser sink, client-ish binary를 이용해 outbound client response-parser chain을 인식하고 `lab_network_redirection`, `protocol_response`, `parser_field`, `leak_before_control_boundary` 채널을 남깁니다.
-> - **Protocol-aware Plan IR 및 AutoPoC 선택 개선.** `exploit_state_machine`은 dossier family를 보존하고 outbound response-parser 후보를 `classify_outbound_response_chain_quality`로 낮춥니다. AutoPoC는 dossier/state-machine source 사이의 duplicate candidate ID도 중복 선택하지 않습니다.
-> - **Exploit-first lab PoV template.** `poc_templates.py`에 outbound response-chain PoV 템플릿을 추가했습니다. configured target에 짧은 benign lab packet만 보내고 observed response/readback evidence가 있을 때만 `vulnerability_trigger` 성공으로 인정합니다. overlong field, ROP, command payload, crypto/key recovery, spoofing infrastructure는 생성하지 않습니다.
-> - **PoC 품질 리뷰 문서화.** 공개 ER605 분석 기준 품질 평가와 남은 live-lab verifier gap은 [`docs/er605_poc_quality.md`](docs/er605_poc_quality.md)에 정리했습니다.
-
----
-
-## 왜 SCOUT인가?
-
-> **모든 finding에 해시 기반 증거 체인이 있습니다.**
-> 파일 경로, 바이트 오프셋, SHA-256 해시, 근거 없이는 finding을 생성하지 않습니다. 펌웨어 블롭에서 최종 판정까지 추적 가능.
-
-> **4-tier 신뢰도 상한 + Ghidra P-code 검증 -- 정직한 점수.**
-> SYMBOL_COOCCURRENCE 0.40, STATIC_CODE_VERIFIED 0.55, STATIC_ONLY 0.60, PCODE_VERIFIED 0.75. `confirmed` 승격에는 동적 검증이 필요합니다. 점수를 부풀리지 않습니다.
-
-> **SARIF + CycloneDX VEX + SLSA -- 표준 포맷.**
-> GitHub Code Scanning, VS Code, CI/CD 즉시 연동.
-
-> **Analyst-in-the-loop 펌웨어 리뷰용으로 설계됨.**
-> SCOUT는 단일 펌웨어 이미지를 빠르게 깊이 파고들고, evidence 경로와 finding-level lineage를 드러내며, triage와 reporting 표면 전반에 reasoning을 보존할 때 가장 강합니다. 자율 추론 에이전트라기보다 분석가의 검토 루프를 보조하는 도구이며, MCP를 통해 분석가 hint가 다음 런의 LLM 판단에 피드백됩니다.
-
-> **Deep-chain exploitability dossier.**
-> `exploitability_dossier` stage는 finding을 target context, input surface, reachability, controllability, primitive hypothesis, mitigation friction, chain candidate, patch/variant question으로 구성된 analysis-only decision log로 변환합니다. payload를 만들거나 verified exploitability를 주장하지 않고, 수동 분석 우선순위를 정합니다.
-> 단, gated `profile=exploit` lane에서는 이 ranking된 lead를 `exploit_autopoc` 입력으로 사용해 lab-only proof plugin을 만들고 `exploit_runner`, `poc_validation`, `exploit_policy`로 검증합니다.
-
----
-
-## 작동 방식
-
-```
-  firmware.bin  ──>  47단계 파이프라인  ──>  SARIF findings       ──>  웹 뷰어
-                     (Ghidra 자동 감지)     CycloneDX SBOM+VEX       TUI 대시보드
-                     (CVE 자동 매칭)        증거 체인                  GitHub/VS Code
-                     (LLM 선택적)           Exploitability dossier    AI 에이전트 MCP
-                                           SLSA 인증서
-```
-
-```bash
-# 전체 분석
-./scout analyze firmware.bin
-
-# 정적 분석만 (LLM 없음, $0)
-./scout analyze firmware.bin --no-llm
-
-# 사전 추출된 rootfs
-./scout analyze firmware.img --rootfs /path/to/rootfs
-
-# 웹 뷰어
-./scout serve aiedge-runs/<run_id> --port 8080
-
-# TUI 대시보드
-./scout ti                    # 인터랙티브 (최신 실행)
-./scout tw                    # 워치 모드 (자동 갱신)
-
-# AI 에이전트용 MCP 서버
-./scout mcp --project-id aiedge-runs/<run_id>
-```
-
----
-
-## 비교
-
-| 기능 | SCOUT | FirmAgent | EMBA | FACT | FirmAE |
-|:-----|:-----:|:---------:|:----:|:----:|:------:|
-| 분석 규모 (테스트 펌웨어) | 1,123 | 14 | -- | -- | 1,124 |
-| SBOM (CycloneDX 1.6+VEX) | O | X | O | X | X |
-| SARIF 2.1.0 내보내기 | O | X | X | X | X |
-| 해시 기반 증거 체인 | O | X | X | X | X |
-| SLSA L2 프로비넌스 | O | X | X | X | X |
-| Known CVE 시그니처 매칭 | O (2,528 CVEs, 시그니처 25개) | X | X | X | X |
-| 신뢰도 상한 (정직한 점수) | O | X | X | X | X |
-| Ghidra 통합 (자동 감지) | O | IDA Pro | O | X | X |
-| AFL++ 퍼징 파이프라인 | O | O | X | X | X |
-| 크로스 바이너리 IPC 체인 | O (5종) | X | X | X | X |
-| 테인트 전파 (LLM) | O | O (DeepSeek) | X | X | X |
-| 적대적 FP 제거 | O | X | X | X | X |
-| MCP 서버 (AI 에이전트) | O | X | X | X | X |
-| 웹 리포트 뷰어 | O | X | O | O | X |
-| pip 의존성 없음 | O | X | X | X | X |
-
----
-
-## 주요 기능
-
-| | 기능 | 설명 |
-|---|------|------|
-| :package: | **SBOM & CVE** | CycloneDX 1.6 + VEX + 25 Known CVE 시그니처 (8 벤더) + NVD 스캔 + 2,528 로컬 CVE DB + EPSS 스코어링 (FIRST.org API, 배치 + 캐싱) |
-| :mag: | **바이너리 분석** | Ghidra P-code SSA dataflow taint + ELF hardening (NX/PIE/RELRO/Canary/FORTIFY) + `.dynstr` 감지 + 28개 sink 심볼 + format string 탐지 |
-| :dart: | **공격 표면** | Source→sink 추적, 웹 서버 자동 감지, 크로스 바이너리 IPC 체인 (5종: unix socket, dbus, shm, pipe, exec) |
-| :brain: | **테인트 분석** | HTTP-aware 프로시저 간 테인트, P-code SSA dataflow, call chain 시각화, 4-strategy fallback (P-code → colocated → decompiled → interprocedural) |
-| :robot: | **LLM 엔진** | 4개 백엔드 (Codex CLI / Claude API / Claude Code CLI / Ollama) + 중앙 관리 시스템 프롬프트 + structured JSON 출력 + 5-stage 파서 (preamble/fence/raw/brace-counting/error-recovery) + temperature 제어 |
-| :crossed_swords: | **LLM-Adjudicated Debate** | Advocate/Critic LLM 판정 기반 FP 후보 축소 (Tier 2 carry-over 기준 99.3%). parse_failures vs llm_call_failures 분리 + quota_exhausted 명시적 탐지 |
-| :compass: | **Explainability Surface** | finding / analyst markdown / TUI / 웹 뷰어에 `reasoning_trail`과 evidence lineage를 보존해, 왜 downgrade/uphold/priority 결정이 났는지 바로 추적 가능. advocate / critic / decision / pattern-hit 엔트리, raw response 200자 redaction |
-| :inbox_tray: | **Analyst-in-the-loop Channel** | reasoning 조회, hint injection, verdict override, category filter 4개 tool. `AIEDGE_FEEDBACK_DIR` opt-in으로 hint가 다음 런 advocate 프롬프트에 주입됨 (`fcntl.flock` 기반 쓰기 안전) |
-| :triangular_ruler: | **Detection vs Priority 분리** | `confidence`는 증거 강도만 (≤0.55 static cap), `priority_score` / `priority_inputs`는 EPSS·reachability·backport·CVSS 기반 운영 우선순위 신호만 담당. [`docs/scoring_calibration.md`](docs/scoring_calibration.md) 참조 |
-| :speedboat: | **병렬 DAG 실행** | `--experimental-parallel [N]` 기반 opt-in level-wise stage 병렬 실행 (ThreadPoolExecutor + Kahn topo). 47-stage 기준 15 level / max-width 7. 기존 순차 경로 무수정 |
-| :shield: | **보안 평가** | X.509 인증서 스캔, 부트 서비스 감사, 파일시스템 권한, 자격 증명 매핑, hardcoded secret 탐지 |
-| :test_tube: | **퍼징** *(선택)* | AFL++ CMPLOG, persistent mode, NVRAM faker, 하니스 생성, crash triage |
-| :bug: | **에뮬레이션** | 4-tier (FirmAE / Pandawan+FirmSolo / QEMU user-mode / rootfs 검사) + GDB 원격 디버깅 |
-| :electric_plug: | **MCP 서버** | Model Context Protocol 12개 도구 (Claude Code/Desktop 연동) |
-| :bar_chart: | **웹 뷰어** | Glassmorphism 대시보드 (KPI 바, IPC 맵, 리스크 히트맵, 인터랙티브 evidence 탐색) |
-| :link: | **증거 체인** | SHA-256 앵커 아티팩트 + 4-tier 신뢰도 상한 (0.40/0.55/0.60/0.75) + 5단계 exploit 승격 ladder |
-| :scroll: | **표준 출력** | SARIF 2.1.0 (GitHub Code Scanning) + CycloneDX 1.6 + VEX + SLSA Level 2 in-toto 인증 |
-| :gear: | **CI/CD 통합** | GitHub Action (`.github/actions/scout-scan/`) composite Docker action + GitHub Security 탭 SARIF 자동 업로드 |
-| :scales: | **규제 정합성** | EU CRA Annex I 호환 출력 포맷 (`docs/compliance_mapping/cra_annex_i.md`); FDA Section 524B 가이던스 호환 SBOM 출력; ISO 21434 / UN R155 호환 출력 포맷 |
-| :chart_with_upwards_trend: | **벤치마킹** | FirmAE 데이터셋 (1,123 펌웨어), analyst-readiness 점수화, verifier 기반 archive bundle, TP/FP 분석 스크립트 |
-| :key: | **벤더 복호화** | D-Link SHRS AES-128-CBC 자동 복호화; Shannon entropy 암호화 탐지 (>7.9); binwalk v3 호환 |
-| :white_check_mark: | **Zero Dependencies** | Pure Python 3.10+ stdlib만 사용 — pip 의존성 없음, 에어갭 환경 배포 친화적 |
-
----
-
-## Analyst Copilot 표면
-
-### Explainability surface
-- `reasoning_trail`과 evidence lineage가 findings / analyst Markdown / TUI / 웹 뷰어 / SARIF 속성까지 이어진다.
-- 리뷰어는 여기서 *왜* downgrade/uphold/promotion이 일어났는지 확인한다.
-
-### Analyst-in-the-loop channel
-- MCP 도구와 `AIEDGE_FEEDBACK_DIR`가 공식 hint/override 경로다.
-- 인간 분석가의 힌트는 다음 런 판단에 반영될 수 있지만, 최종 판정 책임은 여전히 분석가에게 남는다.
-
-### Autonomous reasoning (future)
-- v2.8.0의 SCOUT는 **완전자율 exploit agent**로 포지셔닝하지 않는다.
-- multi-agent exploit chain, pair-grounded eval loop, LLM fuzz harness는 **Phase 2D / reviewer eval lane** 범위다.
-
-## 파이프라인 (47단계)
-
-```
-펌웨어 --> 언패킹 --> 프로파일 --> 인벤토리 --> Ghidra --> 시맨틱 분류
-    --> SBOM --> CVE 스캔 --> 도달성 --> 엔드포인트 --> 서피스
-    --> 강화 소스 --> C-Source 식별 --> 테인트 전파
-    --> FP 검증 --> 적대적 트리아지
-    --> 그래프 --> 공격 표면 --> Findings
-    --> LLM 트리아지 --> LLM 합성 --> 에뮬레이션 --> [퍼징]
-    --> PoC 개선 --> 체인 구성 --> Exploitability Dossier
-    --> Protocol Model --> Exploit State Machine --> Crash Replay --> Primitive Verifier
-    --> 익스플로잇 체인 --> PoC --> 검증
-```
-
-Ghidra는 자동 감지되어 기본 활성화됩니다. `[대괄호]` 스테이지는 선택적 외부 도구 필요 (AFL++/Docker).
-
-<details>
-<summary><strong>파이프라인 스테이지 레퍼런스 (47개)</strong></summary>
-
-| 스테이지 | 모듈 | 목적 | LLM | 비용 |
-|---------|------|------|-----|------|
-| `tooling` | `tooling.py` | 외부 도구 가용성 체크 (binwalk, Ghidra, Docker) | 아니오 | $0 |
-| `extraction` | `extraction.py` | 펌웨어 언패킹 (binwalk + vendor_decrypt + Shannon entropy) | 아니오 | $0 |
-| `structure` | `structure.py` | 파일시스템 구조 분석 | 아니오 | $0 |
-| `carving` | `carving.py` | 비구조화 영역 파일 카빙 | 아니오 | $0 |
-| `firmware_profile` | `firmware_profile.py` | 아키텍처/커널/init 시스템 프로파일링 | 아니오 | $0 |
-| `inventory` | `inventory.py` | 바이너리별 ELF hardening + 심볼 추출 | 아니오 | $0 |
-| `ghidra_analysis` | `ghidra_analysis.py` | 디컴파일 + P-code SSA dataflow | 아니오 | $0 |
-| `semantic_classification` | `semantic_classifier.py` | 3-pass 함수 분류 (static → haiku → sonnet) | 예 | 낮음 |
-| `sbom` | `sbom.py` | CycloneDX 1.6 SBOM + VEX 생성 | 아니오 | $0 |
-| `cve_scan` | `cve_scan.py` | NVD + 25 known signature + EPSS enrichment | 아니오 | $0 |
-| `reachability` | `reachability.py` | BFS 기반 호출 그래프 도달성 | 아니오 | $0 |
-| `endpoints` | `endpoints.py` | 네트워크 엔드포인트 발견 | 아니오 | $0 |
-| `surfaces` | `surfaces.py` | 공격 표면 열거 | 아니오 | $0 |
-| `enhanced_source` | `enhanced_source.py` | 웹 서버 자동 감지 + INPUT_APIS 스캔 (21개 API) | 아니오 | $0 |
-| `csource_identification` | `csource_identification.py` | 정적 센티널 + QEMU 기반 HTTP 입력 소스 식별 | 아니오 | $0 |
-| `taint_propagation` | `taint_propagation.py` | 28개 sink + format string 탐지 인터프로시저 taint | 예 | 중간 |
-| `fp_verification` | `fp_verification.py` | 3패턴 FP 제거 + LLM 검증 (parse/call 실패 분리) | 예 | 낮음 |
-| `adversarial_triage` | `adversarial_triage.py` | Advocate/Critic LLM 토론 (LLM 판정 기준 FPR 감소, 99.3%) | 예 | 중간 |
-| `graph` | `graph.py` | 통신 그래프 (5종 IPC edge) | 아니오 | $0 |
-| `attack_surface` | `attack_surface.py` | IPC 체인 포함 공격 표면 매핑 | 아니오 | $0 |
-| `attribution` | `attribution.py` | 벤더/펌웨어 attribution | 아니오 | $0 |
-| `functional_spec` | `functional_spec.py` | 기능 명세 추출 | 아니오 | $0 |
-| `threat_model` | `threat_model.py` | STRIDE 기반 위협 모델링 | 아니오 | $0 |
-| `web_ui` | `web_ui.py` | 웹 UI / CGI 엔드포인트 분석 | 아니오 | $0 |
-| `findings` | `findings.py` | Finding 집계 + SARIF export | 아니오 | $0 |
-| `llm_triage` | `llm_triage.py` | LLM finding 트리아지 (haiku/sonnet/opus 자동 라우팅) | 예 | 가변 |
-| `llm_synthesis` | `llm_synthesis.py` | LLM finding 합성 | 예 | 중간 |
-| `emulation` | `emulation.py` | 4-tier 에뮬레이션 (FirmAE / Pandawan / QEMU / rootfs) | 아니오 | $0 |
-| `dynamic_validation` | `dynamic_validation.py` | 동적 동작 검증 | 아니오 | $0 |
-| `fuzzing` | `fuzz_*.py` | NVRAM faker 포함 AFL++ 퍼징 | 아니오 | $0 |
-| `poc_refinement` | `poc_refinement.py` | 반복 PoC 생성 (5회 시도) | 예 | 중간 |
-| `chain_construction` | `chain_constructor.py` | 동일 바이너리 + 크로스 바이너리 IPC 익스플로잇 체인 | 아니오 | $0 |
-| `exploitability_dossier` | `exploitability_dossier.py` | deep-chain analysis-only exploitability decision log | 아니오 | $0 |
-| `protocol_model` | `protocol_model.py` | run-local RAG 기반 protocol/input model + safe encoder skeleton | 선택 | 낮음 |
-| `exploit_state_machine` | `exploit_state_machine.py` | 후보별 reachability/trigger/leak/control proof DAG | 아니오 | $0 |
-| `crash_replay` | `crash_replay.py` | lab-gated QEMU/cyclic crash replay + GDB script 수집 | 아니오 | $0 |
-| `primitive_verifier` | `primitive_verifier.py` | evidence bundle/crash/GDB trace 기반 primitive 분류 | 아니오 | $0 |
-| `exploit_gate` | `stage_registry.py` | exploit 승격 게이트 | 아니오 | $0 |
-| `exploit_chain` | `exploit_chain.py` | exploit 체인 검증 | 아니오 | $0 |
-| `exploit_autopoc` | `exploit_autopoc.py` | 자동 PoC 오케스트레이션 | 예 | 중간 |
-| `poc_validation` | `poc_validation.py` | PoC 재현 검증 | 아니오 | $0 |
-| `exploit_policy` | `exploit_policy.py` | 최종 exploit 승격 결정 | 아니오 | $0 |
-
-OTA 전용 스테이지: `ota`, `ota_payload`, `ota_fs`, `ota_roots`, `ota_boottriage`, `firmware_lineage` (Android 스타일 OTA payload 분석).
-
-</details>
-
-## 벤치마크
-
-### Tier 1 (정적 분석, frozen baseline)
-
-_기준 데이터: v2.6.1, 2026-04-17, fresh corpus refresh (`docs/carry_over_benchmark_v2.6.md`)_
-
-- `1,123`개 펌웨어 / `8`개 벤더 / **98.8%** 성공률
-- `1,110` success / `4` partial / `9` fatal
-- `3,531` findings / `146,943` CVE 매칭
-- `1,089 / 1,110` successful runs에서 nonzero CVE 산출
-
-### Tier 2 (LLM Adversarial Debate, GPT-5.3-Codex)
-
-_기준 데이터: v2.3.0, 2026-04-09, claude-code 드라이버 (carry-over; pair-eval lane pending)_
-
-- `36`개 펌웨어 / `9`개 벤더
-- `2,430` findings 토론 → `2,412` downgraded + `18` maintained
-- **LLM 판정 기준 FPR 감소율: 99.3%** | **pair-grounded FN/FP는 reviewer eval lane에서 확정 예정**
-
-### v2.6.0 post-merge 실펌웨어 검증
-
-_이 섹션은 위 carry-over corpus baseline과 별개로, 릴리즈 후 실펌웨어 검증 결과를 기록합니다._
-
-#### 검증 대상 1 — Netgear R7000 (codex 드라이버, `--experimental-parallel 4`)
-
-| 지표 | v2.5.0 | v2.6.0 |
-|---|---|---|
-| `adversarial_triage` parse_failures | 0/100 | **0/100** (100 debated, 97 downgraded, 3 maintained) |
-| `fp_verification` unverified | 0/100 | **0/100** (100 verified: 56 TP, 44 FP) |
-| `reasoning_trail_count` (top-level findings) | N/A | **0/3** top-level / **100/100** `adversarial_triage` + `fp_verification` 아티팩트 ¹ |
-| `priority_score` 보유 finding 수 | N/A | **3/3** (100% additive priority annotation) |
-| `priority_bucket_counts` | N/A | `{critical: 0, high: 0, medium: 3, low: 0}` |
-| category 분포 | N/A | `{vulnerability: 1, pipeline_artifact: 2, misconfiguration: 0, unclassified: 0}` |
-| `cve_scan` EPSS enriched | 23/23 | **0** (stage skipped — `sbom`이 partial이라 `cve_scan`/`reachability`가 upstream 의존성 실패로 skip ²) |
-| `--experimental-parallel 4` wall-clock | N/A | **약 170분** 파이프라인 end-to-end (`fp_verification`이 113분으로 dominant. 순차 실행 baseline 없어서 델타 미산정) |
-
-¹ **v2.6.0 → v2.6.1 후속 수정 (커밋 `7b36274`)**: top-level synthesis finding(`web.exec_sink_overlap`)은 이제 stage-level aggregate summary에만 기대지 않고, 매칭된 downstream evidence lineage를 상속합니다. run-relative binary path를 우선하고, SHA-256으로 폴백하며, 대표 downstream trail을 deterministic top-K로 샘플링해 synthesis finding이 실제로 어떤 alerts에 의해 형성됐는지 드러냅니다. 위 R7000 런은 v2.6.0 배포본 동작입니다.
-
-² **v2.6.0 → v2.6.1 후속 수정 (커밋 `8e0bb82`)**: R7000의 extraction 자체는 정상 성공 (1,664개 파일 + 2,412개 바이너리가 `squashfs-root` 아래에 존재). 그런데 SBOM 스테이지가 0 components를 반환한 진짜 이유는 조용한 스키마 불일치였습니다 — `_collect_so_files_from_inventory`가 deprecated된 `inventory.file_list`를 읽었고 (`roots`만 노출되는 현재 스키마), `_detect_from_binary_analysis`가 엔트리별 `string_hits`를 기대했으나 현재는 `matched_symbols`만 방출. OpenWrt는 opkg 데이터베이스 한 군데서만 100+ 컴포넌트가 나와서 이 버그가 가려져 있었습니다. 수정: 두 헬퍼가 `inventory.roots`를 직접 walk하고, `_extract_ascii_runs` 신규 헬퍼로 바이너리 파일 앞 256KB를 읽어 printable run 추출로 폴백. 이 R7000 런에 `SbomStage`만 재실행하면 component 수가 **0 → 4**로 증가 (`curl 7.36.0`은 `/usr/bin/curl` 직접 읽어서 탐지, `openssl 1.0.0` / `libz 1` / `libpthread 0`은 `.so*` walking). 전체 파이프라인 재실행 시 downstream `cve_scan` / `reachability`가 실제 CVE + EPSS 수치를 생성.
-
-#### 검증 대상 2 — OpenWrt Archer C7 v5 (TP-Link, `--no-llm`)
-
-| 지표 | v2.6.0 |
-|---|---|
-| 총 findings | **3** |
-| `reasoning_trail_count` | **0** _(no-llm 모드는 adversarial_triage / fp_verification이 LLM-gated이므로 trail 미생성. 정상 동작)_ |
-| `priority_score` 보유 finding 수 | **3 / 3** _(100% — additive priority annotation 성공)_ |
-| `priority_bucket_counts` | `{critical: 0, high: 0, medium: 3, low: 0}` |
-| category 분포 | `{vulnerability: 1, pipeline_artifact: 2, misconfiguration: 0, unclassified: 0}` _(PR #7a 3-category ontology, 0% unclassified)_ |
-| 특이사항 | squashfs ext4 루트 정상 추출. `--no-llm` 모드라서 reasoning_trail 미생성 (예상). `findings` stage까지 end-to-end 완주 |
-
-전체 버전 히스토리는 [`CHANGELOG.md`](CHANGELOG.md), 두 score 계약은 [`docs/scoring_calibration.md`](docs/scoring_calibration.md)를 참조하세요.
-
----
-
-## 아키텍처
-
-```
-+--------------------------------------------------------------------+
-|                       SCOUT (증거 생산 엔진)                        |
-|                                                                    |
-|  펌웨어 --> 언패킹 --> 프로파일 --> 인벤토리 --> SBOM --> CVE        |
-|                         |            |            |      |         |
-|                      Ghidra     바이너리 감사  40+ 시그    NVD+     |
-|                      자동 감지   NX/PIE/etc              로컬 DB    |
-|                                                                    |
-|  --> 테인트 --> FP 필터 --> 공격 표면 --> Findings                  |
-|     (HTTP-aware)  (3-패턴)   (IPC 체인)    (SARIF 2.1.0)           |
-|                                                                    |
-|  --> 에뮬레이션 --> [퍼징] --> 익스플로잇 체인 --> PoC --> 검증       |
-|                                                                    |
-|  47단계 . SHA-256 매니페스트 . 4-tier 신뢰도 상한 (0.40/0.55/0.60/0.75)     |
-|  출력: SARIF + CycloneDX VEX + SLSA L2 + Markdown 보고서            |
-+--------------------------------------------------------------------+
-|                    핸드오프 (firmware_handoff.json)                 |
-+--------------------------------------------------------------------+
-|                     Terminator (오케스트레이터)                     |
-|  LLM 심판 --> 동적 검증 --> Verified Chain                          |
-+--------------------------------------------------------------------+
-```
-
-| 계층 | 역할 | 결정적? |
-|:-----|:-----|:------:|
-| **SCOUT** | 증거 생산 (47단계) | 예 |
-| **핸드오프** | 엔진-오케스트레이터 JSON 계약 | 예 |
-| **Terminator** | LLM 심판, 동적 검증, 익스플로잇 개발 | 아니오 (감사 가능) |
-
----
-
-## 익스플로잇 승격 정책
-
-| 등급 | 요구사항 | 배치 |
-|:-----|:---------|:-----|
-| `dismissed` | Critic 반박 강함 또는 신뢰도 < 0.5 | 부록만 |
-| `candidate` | 신뢰도 0.5-0.8, 증거 존재하나 체인 불완전 | 보고서 (표시) |
-| `high_confidence_static` | 신뢰도 >= 0.8, 강한 정적 증거, 동적 없음 | 보고서 (강조) |
-| `confirmed` | 신뢰도 >= 0.8 AND 동적 검증 아티팩트 1+ | 보고서 (상단) |
-| `verified_chain` | confirmed AND 샌드박스 PoC 3회 재현 | 익스플로잇 보고서 |
-
----
-
-<details>
-<summary><strong>CLI 레퍼런스</strong></summary>
-
-| 명령어 | 설명 |
-|--------|------|
-| `./scout analyze <firmware>` | 전체 47단계 분석 파이프라인 |
-| `./scout analyze <firmware> --quiet` | 진행 상황 출력 억제 (CI/스크립트 환경) |
-| `./scout analyze-8mb <firmware>` | 8MB 정규형 트랙 분석 |
-| `./scout stages <run_dir> --stages X,Y` | 특정 스테이지 재실행 |
-| `./scout serve <run_dir>` | 웹 리포트 뷰어 |
-| `./scout mcp [--project-id <id>]` | MCP stdio 서버 |
-| `./scout tui <run_dir>` | TUI 대시보드 |
-| `./scout ti` | TUI 인터랙티브 (최신 실행) |
-| `./scout tw` | TUI 워치 모드 (자동 갱신) |
-| `./scout to` | TUI 원샷 (최신 실행) |
-| `./scout t` | TUI 기본 (최신 실행) |
-| `./scout corpus-validate` | 코퍼스 매니페스트 검증 |
-| `./scout quality-metrics` | 품질 메트릭 계산 |
-| `./scout quality-gate` | 품질 임계값 확인 |
-| `./scout release-quality-gate` | 통합 릴리즈 게이트 |
-
-**종료 코드:** `0` 성공, `10` 부분 성공, `20` 치명적 오류, `30` 정책 위반
-
-</details>
-
-<details>
-<summary><strong>벤치마킹</strong></summary>
-
-```bash
-# FirmAE 데이터셋 벤치마크 (현재 frozen baseline 기준 usable 펌웨어 1,123개)
-./scripts/benchmark_firmae.sh --parallel 8 --time-budget 1800 --cleanup
-
-# 옵션
---dataset-dir DIR       # 펌웨어 디렉토리 (기본: aiedge-inputs/firmae-benchmark)
---results-dir DIR       # 결과 출력 디렉토리
---file-list PATH        # 줄바꿈 기준 고정 펌웨어 리스트
---parallel N            # 동시 작업 수 (기본: 4)
---time-budget S         # 펌웨어당 시간 (기본: 600초)
---stages STAGES         # 특정 스테이지 (기본: 전체 파이프라인)
---max-images N          # 이미지 제한 (0 = 전체)
---llm                   # LLM 단계 활성화
---8mb                   # 8MB 트랙 사용
---full                  # 동적 스테이지 포함
---cleanup               # verifier 친화적인 run replica를 results/archives/ 아래 보존한 뒤 원본 run_dir 삭제
---dry-run               # 실행 없이 파일 목록만
-
-# 기존 benchmark-results를 analyst-readiness 기준으로 재평가
-python3 scripts/reevaluate_benchmark_results.py \
-  --results-dir benchmark-results/<run>
-
-# legacy bundle을 normalize한 뒤 일부 stage만 재실행 (archive fidelity 디버깅용)
-python3 scripts/rerun_benchmark_stages.py \
-  --results-dir benchmark-results/<legacy-run> \
-  --out-dir benchmark-results/<rerun-out> \
-  --stages attribution,graph,attack_surface \
-  --no-llm
-
-# 벤치마크 후 분석
-PYTHONPATH=src python3 scripts/cve_rematch.py \
-  --results-dir benchmark-results/firmae-YYYYMMDD_HHMM \
-  --nvd-dir data/nvd-cache \
-  --csv-out cve_matches.csv
-
-PYTHONPATH=src python3 scripts/analyze_findings.py \
-  --results-dir benchmark-results/firmae-YYYYMMDD_HHMM \
-  --output analysis_report.json
-
-# FirmAE 데이터셋 설정
-./scripts/unpack_firmae_dataset.sh [ZIP_FILE]
-
-# Tier 1 frozen baseline 문서
-# - docs/tier1_rebenchmark_frozen_baseline.md
-# - docs/tier1_rebenchmark_final_analysis.md
-```
-
-**현재 benchmark 계약**
-
-- archived benchmark bundle은 이제 **flattened JSON 묶음이 아니라 run replica 전체**를 보존하는 것을 표준으로 삼습니다.
-- benchmark 품질은 두 층으로 봅니다.
-  - **analysis rate** = 파이프라인 완료율 (`success + partial`)
-  - **analyst-ready rate** = archived bundle이 analyst/verifier 점검을 통과하고 evidence navigation이 가능한 상태
-- `benchmark-results/legacy/tier2-llm-v2`는 **legacy snapshot**입니다. 역사적 참고/재평가용으로만 남기고, 새 analyst-readiness 기준의 공식 baseline으로 쓰지 않습니다.
-- 새 contract는 fresh single-sample run (`benchmark-results/tier2-single-fidelity`)에서 archived bundle 기준 digest/report verifier 통과로 확인했습니다.
-
-**현재 LLM 품질 동작**
-
-- `llm_triage` 모델 라우팅: `<=10 haiku`, `11-50 sonnet`, `>50 또는 chain-backed opus`
-- `haiku` 호출이 nonzero exit이면 `sonnet`으로 fallback합니다.
-- `llm_triage`, `semantic_classification`, `adversarial_triage`, `fp_verification`은 `stages/<stage>/llm_trace/*.json`를 남깁니다.
-- parse failure는 가능하면 repair하고, 아니면 조용히 성공 처리하지 않고 fail-closed `partial/degraded`로 남깁니다.
-
-</details>
-
-<details>
-<summary><strong>환경 변수</strong></summary>
-
-### 코어
-
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `AIEDGE_LLM_DRIVER` | `codex` | LLM 제공자: `codex` / `claude` / `claude-code` / `gemini` / `ollama` |
-| `ANTHROPIC_API_KEY` | -- | Claude 드라이버 API 키 (`claude-code`는 불필요) |
-| `AIEDGE_OLLAMA_URL` | `http://localhost:11434` | Ollama 서버 URL |
-| `AIEDGE_LLM_BUDGET_USD` | -- | LLM 비용 예산 한도 |
-| `AIEDGE_PRIV_RUNNER` | -- | 동적 스테이지 특권 명령 접두사 |
-
-### Ghidra
-
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `AIEDGE_GHIDRA_HOME` | 자동 감지 | Ghidra 설치 경로; `/opt/ghidra_*`, `/usr/local/ghidra*` 탐색 |
-| `AIEDGE_GHIDRA_MAX_BINARIES` | `20` | 분석할 최대 바이너리 수 |
-| `AIEDGE_GHIDRA_TIMEOUT_S` | `300` | 바이너리당 분석 타임아웃 |
-
-### SBOM & CVE
-
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `AIEDGE_NVD_API_KEY` | -- | NVD API 키 (선택, 속도 제한 개선) |
-| `AIEDGE_NVD_CACHE_DIR` | -- | 크로스 실행 NVD 응답 캐시 |
-| `AIEDGE_SBOM_MAX_COMPONENTS` | `500` | 최대 SBOM 컴포넌트 |
-| `AIEDGE_CVE_SCAN_MAX_COMPONENTS` | `50` | CVE 스캔 최대 컴포넌트 |
-
-### 퍼징 & 에뮬레이션
-
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `AIEDGE_AFLPP_IMAGE` | `aflplusplus/aflplusplus` | AFL++ Docker 이미지 |
-| `AIEDGE_FUZZ_BUDGET_S` | `3600` | 퍼징 시간 예산 (초) |
-| `AIEDGE_FUZZ_MAX_TARGETS` | `5` | 최대 퍼징 대상 |
-| `AIEDGE_EMULATION_IMAGE` | `scout-emulation:latest` | 에뮬레이션 Docker 이미지 |
-| `AIEDGE_FIRMAE_ROOT` | `/opt/FirmAE` | FirmAE 설치 경로 |
-
-### 품질 게이트
-
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `AIEDGE_QG_PRECISION_MIN` | `0.9` | 최소 정밀도 임계값 |
-| `AIEDGE_QG_RECALL_MIN` | `0.6` | 최소 재현율 임계값 |
-| `AIEDGE_QG_FPR_MAX` | `0.1` | 최대 거짓 양성률 |
-
-</details>
-
-<details>
-<summary><strong>실행 디렉토리 구조</strong></summary>
-
-```
-aiedge-runs/<run_id>/
-├── manifest.json
-├── firmware_handoff.json
-├── provenance.intoto.jsonl           # SLSA L2 인증서
-├── input/firmware.bin
-├── stages/
-│   ├── extraction/                   # 추출된 파일시스템
-│   ├── inventory/
-│   │   └── binary_analysis.json      # 바이너리별 hardening + 심볼
-│   ├── enhanced_source/
-│   │   └── sources.json              # HTTP 입력 소스 + 웹 서버 감지
-│   ├── sbom/
-│   │   ├── sbom.json                 # CycloneDX 1.6
-│   │   └── vex.json                  # VEX 악용 가능성
-│   ├── cve_scan/
-│   │   └── cve_matches.json          # NVD + Known 시그니처 매칭
-│   ├── taint_propagation/
-│   │   └── taint_results.json        # 테인트 경로 + call chain
-│   ├── ghidra_analysis/              # 디컴파일 함수 (선택)
-│   ├── chain_construction/
-│   │   └── chains.json               # 동일/크로스 바이너리 IPC 체인
-│   ├── findings/
-│   │   ├── findings.json             # 전체 findings
-│   │   ├── pattern_scan.json         # 정적 패턴 매칭
-│   │   ├── sarif.json                # SARIF 2.1.0 내보내기
-│   │   └── stage.json                # SHA-256 매니페스트
-│   └── ...                           # 총 42개 스테이지 디렉토리
-└── report/
-    ├── viewer.html                   # 웹 대시보드
-    ├── report.json
-    ├── analyst_digest.json
-    └── executive_report.md
-```
-
-</details>
-
-<details>
-<summary><strong>검증 스크립트</strong></summary>
-
-```bash
-# 증거 체인 무결성
-python3 scripts/verify_analyst_digest.py --run-dir aiedge-runs/<run_id>
-python3 scripts/verify_verified_chain.py --run-dir aiedge-runs/<run_id>
-
-# 보고서 스키마 준수
-python3 scripts/verify_aiedge_final_report.py --run-dir aiedge-runs/<run_id>
-python3 scripts/verify_aiedge_analyst_report.py --run-dir aiedge-runs/<run_id>
-
-# 보안 불변성
-python3 scripts/verify_run_dir_evidence_only.py --run-dir aiedge-runs/<run_id>
-python3 scripts/verify_network_isolation.py --run-dir aiedge-runs/<run_id>
-
-# 품질 게이트
-./scout release-quality-gate aiedge-runs/<run_id>
-```
-
-</details>
-
----
-
-## 문서
-
-| 문서 | 목적 |
-|:-----|:-----|
-| [Blueprint](docs/blueprint.md) | 파이프라인 아키텍처와 설계 근거 |
-| [Status](docs/status.md) | 현재 구현 상태 |
-| [Artifact Schema](docs/aiedge_firmware_artifacts_v1.md) | 프로파일링 + 인벤토리 계약 |
-| [Adapter Contract](docs/aiedge_adapter_contract.md) | Terminator-SCOUT 핸드오프 프로토콜 |
-| [Report Contract](docs/aiedge_report_contract.md) | 보고서 구조와 거버넌스 |
-| [Analyst Digest](docs/analyst_digest_contract.md) | 다이제스트 스키마와 판정 |
-| [Verified Chain](docs/verified_chain_contract.md) | 증거 요구사항 |
-| [Duplicate Gate](docs/aiedge_duplicate_gate_contract.md) | 크로스 실행 중복 제거 |
-| [Known CVE Ground Truth](docs/known_cve_ground_truth.md) | CVE 검증 데이터셋 |
-| [Upgrade Plan v2](docs/upgrade_plan_v2.md) | v2.0 업그레이드 계획 |
-| [LLM Roadmap](docs/roadmap_llm_agent_integration.md) | LLM 통합 전략 |
-
----
-
-## 보안 & 윤리
-
-> **인가된 환경에서만 사용하세요.**
-
-SCOUT은 계약된 보안 감사, 취약점 연구 (책임 있는 공개), CTF/훈련 환경에서의 사용을 위해 설계되었습니다. 동적 검증은 네트워크 격리 샌드박스에서 실행됩니다. 무기화된 페이로드는 포함되어 있지 않습니다.
-
----
-
-## 기여
-
-1. **읽기** [Blueprint](docs/blueprint.md) 아키텍처 컨텍스트
-2. **실행** `pytest -q` -- 모든 테스트 통과
-3. **린트** `ruff check src/` -- 위반 없음
-4. **준수** Stage 프로토콜 (`src/aiedge/stage.py`)
-5. **pip 의존성 없음** -- stdlib only
-
----
-
-## 라이선스
-
-Apache 2.0
-
----
-
-<div align="center">
-
-<sub>보안 연구 커뮤니티를 위해 만들어졌습니다. 비인가 접근 금지.</sub>
-
-<br />
-
-<a href="https://github.com/R00T-Kim/SCOUT">github.com/R00T-Kim/SCOUT</a>
-
-</div>
-sub>보안 연구 커뮤니티를 위해 만들어졌습니다. 비인가 접근 금지.</sub>
-
-<br />
-
-<a href="https://github.com/R00T-Kim/SCOUT">github.com/R00T-Kim/SCOUT</a>
-
-</div>
+<h2 id="key-features">✨ 핵심 특징</h2>
+
+| | 특징 | 설명 |
+|---|---------|-------------|
+| :package: | **하이브리드 SBOM & CVE** | CycloneDX 1.6 + VEX + NVD 스캔 + 2,528개 로컬 CVE DB + 통합 쉘 스크립트 감사 |
+| :mag: | **바이너리 분석** | Ghidra P-code SSA 데이터플로우 테인 분석 + ELF 보안 설정 탐지 + 28개 위험 심볼 추적 |
+| :shell: | **스크립트 분석** | 1,000개 이상의 스크립트 전수 조사 및 위험한 패턴(`eval`, 따옴표 없는 변수, 백틱 등) 탐지 |
+| :dart: | **공격 표면 분석** | Source→sink 경로 추적, 웹 서버 자동 탐지, 5개 유형의 바이너리 간 IPC 체인 구성 |
+| :brain: | **테인 분석** | HTTP 컨텍스트를 이해하는 절차 간 테인 분석, P-code SSA 데이터플로우 시각화 |
+| :robot: | **LLM 엔진** | 4개의 백엔드 지원 + 중앙 집중식 시스템 프롬프트 + 구조화된 JSON 출력 |
+| :crossed_swords: | **LLM 찬반 토론** | Advocate/Critic 모델 간의 토론을 통한 고신뢰도 오탐 제거 |
+| :bar_chart: | **웹 뷰어** | KPI 바, IPC 맵, 위험 히트맵 및 증거 탐색 기능을 갖춘 대시보드 제공 |

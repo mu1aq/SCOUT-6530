@@ -4499,6 +4499,22 @@ def run_findings(
             priority_inputs_to_dict as _priority_inputs_to_dict,
         )
 
+        # Load chains to identify chained findings for priority boosting
+        _chained_ids: set[str] = set()
+        _chains_json = ctx.run_dir / "stages" / "chain_construction" / "chains.json"
+        if _chains_json.exists():
+            try:
+                _chains_data = json.loads(_chains_json.read_text(encoding="utf-8"))
+                for _c in _chains_data.get("chains", []):
+                    for _step in _c.get("steps", []):
+                        _fid = _step.get("finding_id")
+                        if isinstance(_fid, str):
+                            _chained_ids.add(_fid)
+            except Exception:
+                pass
+
+        _LOGICAL_SINKS = {"curl_easy_setopt", "nvram_set", "nvram_get", "system", "popen", "execve"}
+
         for _f in normalized:
             existing_score_any = _f.get("priority_score")
             if isinstance(existing_score_any, (int, float)):
@@ -4507,12 +4523,21 @@ def run_findings(
                     _priority_bucket_counts.get(_bucket, 0) + 1
                 )
                 continue
+            
             _conf_any = _f.get("confidence")
             _det_conf = float(_conf_any) if isinstance(_conf_any, (int, float)) else 0.5
-            if _det_conf < 0.0:
-                _det_conf = 0.0
-            elif _det_conf > 1.0:
-                _det_conf = 1.0
+            _det_conf = max(0.0, min(1.0, _det_conf))
+            
+            # Heuristic: Identify high-impact logical sinks
+            _is_sink = False
+            _syms = _f.get("matched_symbols")
+            if isinstance(_syms, list):
+                if any(s in _LOGICAL_SINKS for s in _syms):
+                    _is_sink = True
+            
+            _fid = _f.get("id")
+            _chained = isinstance(_fid, str) and _fid in _chained_ids
+
             _pi = _PriorityInputs(
                 detection_confidence=_det_conf,
                 epss_score=None,
@@ -4520,6 +4545,8 @@ def run_findings(
                 reachability=None,
                 backport_present=False,
                 cvss_base=None,
+                is_chained=_chained,
+                is_high_impact_sink=_is_sink
             )
             _ps = _compute_priority_score(_pi)
             _f["priority_score"] = round(_ps, 6)

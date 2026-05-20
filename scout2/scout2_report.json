@@ -1,0 +1,25 @@
+{
+  "environment": {
+    "docker_available": true,
+    "missing_images": [
+      "pandawan:latest",
+      "alpine:3.23"
+    ]
+  },
+  "semantic_findings": [
+    {
+      "type": "logic_risk",
+      "id": "SC2-LOG-001",
+      "title": "libcurl usage detected",
+      "description": "Binary libws.so uses curl_easy_setopt. High risk of SSL verification disablement."
+    }
+  ],
+  "ipc_map": {
+    " /work/10-14_ACTIVE/12_build/12.02_agents/SCOUT/aiedge-runs/2026-05-19_1409_sha256-225e1d209771/stages/extraction/_firmware.bin.extracted/squashfs-root/usr/lib/libawsiot_ipc.so": [
+      "grep"
+    ],
+    "        while ! [ -e /var/run/lldpd.socket ]; do": [
+      "/work/10-14_ACTIVE/12_build/12.02_agents/SCOUT/aiedge-runs/2026-05-19_1409_sha256-225e1d209771/stages/extraction/_firmware.bin.extracted/squashfs-root/usr/sbin/repacd-netdet.sh"
+    ]
+  }
+}

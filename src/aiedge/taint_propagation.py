@@ -100,9 +100,16 @@ _SINK_SYMBOLS: frozenset[str] = frozenset(
         # -- CWE-732 incorrect permission assignment --
         "chmod",
         "fchmod",
+        "fchmodat",
         "chown",
         "fchown",
-        "lchown",
+        "fchownat",
+        # -- Logical Sinks (SCOUT 2.0) --
+        "curl_easy_setopt",
+        "curl_easy_perform",
+        "nvram_set",
+        "nvram_safe_set",
+        "msgsnd",
         # -- CWE-377 insecure temporary file --
         "mktemp",
         "tmpnam",
@@ -118,6 +125,9 @@ _SINK_SYMBOLS: frozenset[str] = frozenset(
         "putenv",
         "setenv",
         "unsetenv",
+        # -- SCOUT 2.0: Logical Sinks --
+        "curl_easy_setopt",
+        "curl_easy_perform",
     }
 )
 
@@ -141,8 +151,8 @@ _FORMAT_STRING_SINKS: frozenset[str] = frozenset(
     }
 )
 
-_MAX_PATHS = 200
-_MAX_ALERTS = 100
+_MAX_PATHS = 1000000
+_MAX_ALERTS = 1000000
 
 # FP Rule 2: symbols that indicate network/external input reachability
 _NETWORK_INPUT_SYMBOLS: frozenset[str] = frozenset(
@@ -161,6 +171,29 @@ _NETWORK_INPUT_SYMBOLS: frozenset[str] = frozenset(
         "scanf",
         "read",
         "fread",
+        # -- SCOUT 2.0: IPC & Script Sinks --
+        "msgrcv",
+        "mq_receive",
+        "recvmsg",
+        "nvram_get",
+    }
+)
+
+_BRIDGE_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "nvram_get",
+        "nvram_set",
+        "nvram_safe_get",
+        "nvram_safe_set",
+        "socket",
+        "bind",
+        "connect",
+        "send",
+        "sendto",
+        "sendmsg",
+        "write",
+        "msgsnd",
+        "msgrcv",
     }
 )
 
@@ -303,6 +336,7 @@ def _build_taint_prompt(
     source_api: str,
     sink_symbol: str,
     function_bodies: list[dict[str, str]],
+    cross_binary_context: str = "",
 ) -> str:
     code_blocks = ""
     for fb in function_bodies:
@@ -315,10 +349,15 @@ def _build_taint_prompt(
         body = _truncate_text(body_sliced, max_chars=2000)
         code_blocks += f"\n### {fname}\n```c\n{body}\n```\n"
 
+    bridge_note = ""
+    if cross_binary_context:
+        bridge_note = f"\n## Cross-Binary Context\n{cross_binary_context}\n"
+
     return (
         "You are a firmware taint analysis expert.\n"
         f"Can data from the input API `{source_api}` reach the dangerous "
         f"sink `{sink_symbol}`?\n"
+        f"{bridge_note}"
         "Trace the data flow through these decompiled functions:\n"
         f"{code_blocks}\n"
         "## Rules\n"
@@ -341,6 +380,56 @@ def _build_taint_prompt(
         '"rationale": "User-controlled data from recv() is copied into buffer '
         'via sprintf() without validation, then passed directly to system()."}\n'
     )
+
+
+def _extract_bridges(func_map: dict[str, dict[str, str]]) -> list[dict[str, str]]:
+    """Extract potential IPC/NVRAM bridge markers from decompiled code."""
+    bridges = []
+    # Patterns for nvram_get("key"), nvram_set("key", val), connect("/path"), bind("/path")
+    nvram_pat = re.compile(r'nvram_(?:safe_)?(?:get|set)\s*\(\s*"([^"]+)"')
+    socket_pat = re.compile(r'(?:bind|connect)\s*\(\s*[^,]+,\s*"([^"]+)"')
+    
+    for fname, finfo in func_map.items():
+        body = finfo.get("body", "")
+        binary = finfo.get("binary", "unknown")
+        
+        for m in nvram_pat.finditer(body):
+            bridges.append({
+                "type": "nvram",
+                "key": m.group(1),
+                "binary": binary,
+                "function": fname,
+                "mode": "get" if "get" in m.group(0) else "set"
+            })
+            
+        for m in socket_pat.finditer(body):
+            bridges.append({
+                "type": "socket",
+                "key": m.group(1),
+                "binary": binary,
+                "function": fname,
+                "mode": "bind" if "bind" in m.group(0) else "connect"
+            })
+    return bridges
+
+def _match_bridges(bridges: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Match producer (set/connect/bind) with consumer (get/recv) bridges."""
+    matched = []
+    sets = [b for b in bridges if b["mode"] in ("set", "connect", "bind")]
+    gets = [b for b in bridges if b["mode"] in ("get", "msgrcv", "recv")]
+    
+    for s in sets:
+        for g in gets:
+            if s["key"] == g["key"] and s["binary"] != g["binary"]:
+                matched.append({
+                    "type": s["type"],
+                    "key": s["key"],
+                    "producer_binary": s["binary"],
+                    "consumer_binary": g["binary"],
+                    "producer_func": s["function"],
+                    "consumer_func": g["function"]
+                })
+    return matched
 
 
 def _build_http_taint_path(
@@ -973,6 +1062,10 @@ class TaintPropagationStage:
             if not driver.available():
                 limitations.append("LLM driver not available for taint analysis")
             else:
+                # SCOUT 2.0: Extract and match cross-binary bridges
+                bridges = _extract_bridges(func_map)
+                matched_bridges = _match_bridges(bridges)
+                
                 # Collect unique sink symbols
                 sink_symbols: set[str] = set()
                 for sb in sink_binaries:
@@ -1054,9 +1147,19 @@ class TaintPropagationStage:
                         if not relevant_funcs:
                             continue
 
+                        # SCOUT 2.0: Build cross-binary context for the prompt
+                        cb_ctx = ""
+                        for mb in matched_bridges:
+                            if mb["consumer_binary"] in src_binary and mb["consumer_func"] == src_api:
+                                cb_ctx += (
+                                    f"- Potential bridge detected: Data at {src_api} in {src_binary} "
+                                    f"may originate from {mb['producer_func']} in {mb['producer_binary']} "
+                                    f"via {mb['type']} key/path '{mb['key']}'.\n"
+                                )
+
                         combined_hash = _hash_body(
                             "|".join(f["body"] for f in relevant_funcs)
-                            + f"|{src_api}|{sink_sym}"
+                            + f"|{src_api}|{sink_sym}|{cb_ctx}"
                         )
                         if combined_hash in body_cache:
                             cached = body_cache[combined_hash]
@@ -1086,7 +1189,7 @@ class TaintPropagationStage:
                             trace_count += 1
                             continue
 
-                        prompt = _build_taint_prompt(src_api, sink_sym, relevant_funcs)
+                        prompt = _build_taint_prompt(src_api, sink_sym, relevant_funcs, cross_binary_context=cb_ctx)
                         result = driver.execute(
                             prompt=prompt,
                             run_dir=run_dir,

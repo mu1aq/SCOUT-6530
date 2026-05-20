@@ -61,6 +61,23 @@ _SANITIZER_NAMES: frozenset[str] = frozenset(
         "inet_aton",
         "inet_addr",
         "inet_pton",
+        "inet_ntoa",
+        "inet_ntop",
+        "snprintf",
+        "vsnprintf",
+        "strlcpy",
+        "strncpy",
+        "strncat",
+        "isdigit",
+        "isxdigit",
+        "base64_encode",
+        "base64_decode",
+        "url_encode",
+        "url_decode",
+        "htonl",
+        "htons",
+        "ntohl",
+        "ntohs",
     ]
 )
 
