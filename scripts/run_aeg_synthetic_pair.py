@@ -53,6 +53,90 @@ class _PatchedNoLeakHandler(BaseHTTPRequestHandler):
         return
 
 
+class _VulnerableCommandHandler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+        body = b"uid=0(root) gid=0(root) groups=0(root) synthetic-cmd-proof\n"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - stdlib handler API
+        return
+
+
+class _PatchedCommandHandler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+        body = b"patched firmware: command parameter rejected; no shell readback\n"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - stdlib handler API
+        return
+
+
+def _profile_seed(pattern_id: str) -> dict[str, Any]:
+    if pattern_id == "memory_stateful_probe":
+        return {
+            "candidate_id": "candidate:synthetic-memory-leak",
+            "chain_id": "state_chain_memory_leak",
+            "title": "Synthetic memory leak AEG pair candidate",
+            "families": ["memory_corruption_candidate", "protocol_stateful_probe"],
+            "summary": "Synthetic memory leak AEG pair candidate",
+            "channels": [
+                {"channel_id": "http-direct", "channel_type": "web_api"},
+                {"channel_id": "direct-request", "channel_type": "direct_request"},
+            ],
+            "plan_ir": {"transitions": [{"transition_id": "t_trigger", "event_type": "direct_request"}]},
+            "vulnerable_handler": _VulnerableLeakHandler,
+            "patched_handler": _PatchedNoLeakHandler,
+            "alert_id": "aeg-synthetic-memory-leak",
+            "vulnerable_firmware": b"SCOUT-SYNTHETIC-VULNERABLE-FIRMWARE",
+            "patched_firmware": b"SCOUT-SYNTHETIC-PATCHED-FIRMWARE",
+        }
+    if pattern_id == "cgi_param_cmd_injection":
+        return {
+            "candidate_id": "candidate:synthetic-cgi-cmd-injection",
+            "chain_id": "state_chain_cgi_cmd_injection",
+            "title": "Synthetic CGI parameter command injection AEG pair candidate",
+            "families": ["cmd_injection"],
+            "summary": "Synthetic CGI parameter command injection AEG pair candidate",
+            "channels": [
+                {"channel_id": "http-cgi", "channel_type": "web_api"},
+                {"channel_id": "direct-request", "channel_type": "direct_request"},
+            ],
+            "plan_ir": {"transitions": [{"transition_id": "t_trigger", "event_type": "direct_request"}]},
+            "vulnerable_handler": _VulnerableCommandHandler,
+            "patched_handler": _PatchedCommandHandler,
+            "alert_id": "aeg-synthetic-cgi-cmd-injection",
+            "vulnerable_firmware": b"SCOUT-SYNTHETIC-CGI-CMDI-VULNERABLE-FIRMWARE",
+            "patched_firmware": b"SCOUT-SYNTHETIC-CGI-CMDI-PATCHED-FIRMWARE",
+        }
+    if pattern_id == "config_derived_cmd_injection":
+        return {
+            "candidate_id": "candidate:synthetic-config-cmd-injection",
+            "chain_id": "state_chain_config_cmd_injection",
+            "title": "Synthetic config-derived command injection AEG pair candidate",
+            "families": ["cmd_injection"],
+            "summary": "Synthetic config-derived command injection AEG pair candidate",
+            "channels": [
+                {"channel_id": "http-config-write", "channel_type": "web_api"},
+                {"channel_id": "stored-config", "channel_type": "config"},
+            ],
+            "plan_ir": {"transitions": [{"transition_id": "t_trigger", "event_type": "delayed_parse"}]},
+            "vulnerable_handler": _VulnerableCommandHandler,
+            "patched_handler": _PatchedCommandHandler,
+            "alert_id": "aeg-synthetic-config-cmd-injection",
+            "vulnerable_firmware": b"SCOUT-SYNTHETIC-CONFIG-CMDI-VULNERABLE-FIRMWARE",
+            "patched_firmware": b"SCOUT-SYNTHETIC-CONFIG-CMDI-PATCHED-FIRMWARE",
+        }
+    raise ValueError(f"unsupported synthetic pattern: {pattern_id}")
+
+
 def _write_json(run_dir: Path, rel_path: str, payload: dict[str, Any]) -> None:
     path = run_dir / rel_path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -116,7 +200,11 @@ def _write_dynamic_validation_bundle(run_dir: Path) -> None:
     pcap.write_bytes(struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1))
 
 
-def _write_state_machine_seed(run_dir: Path) -> None:
+def _write_state_machine_seed(run_dir: Path, *, pattern_id: str) -> None:
+    profile = _profile_seed(pattern_id)
+    families = cast(list[str], profile["families"])
+    channels = cast(list[dict[str, object]], profile["channels"])
+    plan_ir = cast(dict[str, object], profile["plan_ir"])
     _write_json(
         run_dir,
         "stages/exploit_state_machine/exploit_state_machine.json",
@@ -127,28 +215,24 @@ def _write_state_machine_seed(run_dir: Path) -> None:
             "machines": [
                 {
                     "machine_id": "machine-001",
-                    "candidate_id": "candidate:synthetic-memory-leak",
-                    "chain_id": "state_chain_memory_leak",
+                    "candidate_id": str(profile["candidate_id"]),
+                    "chain_id": str(profile["chain_id"]),
                     "protocol_id": "protocol-001",
-                    "title": "Synthetic memory leak AEG pair candidate",
-                    "families": [
-                        "memory_corruption_candidate",
-                        "protocol_stateful_probe",
-                    ],
+                    "title": str(profile["title"]),
+                    "families": families,
                     "autopoc_seed": {
-                        "candidate_id": "candidate:synthetic-memory-leak",
-                        "chain_id": "state_chain_memory_leak",
+                        "candidate_id": str(profile["candidate_id"]),
+                        "chain_id": str(profile["chain_id"]),
                         "priority": "high",
                         "score": 0.84,
-                        "families": [
-                            "memory_corruption_candidate",
-                            "protocol_stateful_probe",
-                        ],
-                        "summary": "Synthetic memory leak AEG pair candidate",
+                        "families": families,
+                        "summary": str(profile["summary"]),
+                        "channels": channels,
+                        "plan_ir": plan_ir,
                     },
-                    "evidence_refs": [
-                        "stages/exploit_state_machine/exploit_state_machine.json"
-                    ],
+                    "channels": channels,
+                    "plan_ir": plan_ir,
+                    "evidence_refs": ["stages/exploit_state_machine/exploit_state_machine.json"],
                 }
             ],
             "summary": {"machine_count": 1},
@@ -163,6 +247,7 @@ def _write_quality_signals(
     *,
     fpr: float,
     fp_verdict: str,
+    alert_id: str,
 ) -> None:
     _write_json(run_dir, "quality_metrics.json", {"overall": {"fpr": fpr}})
     _write_json(
@@ -171,7 +256,7 @@ def _write_quality_signals(
         {
             "verified_alerts": [
                 {
-                    "id": "aeg-synthetic-memory-leak",
+                    "id": alert_id,
                     "severity": "high",
                     "fp_verdict": fp_verdict,
                 }
@@ -221,6 +306,7 @@ def _execute_case(
     handler_cls: type[BaseHTTPRequestHandler],
     fpr: float,
     fp_verdict: str,
+    pattern_id: str,
 ) -> dict[str, object]:
     firmware = work_root / f"{case_id}.bin"
     firmware.write_bytes(firmware_bytes)
@@ -232,8 +318,9 @@ def _execute_case(
     )
     _set_exploit_profile(info.manifest_path)
     _write_dynamic_validation_bundle(info.run_dir)
-    _write_state_machine_seed(info.run_dir)
-    _write_quality_signals(info.run_dir, fpr=fpr, fp_verdict=fp_verdict)
+    _write_state_machine_seed(info.run_dir, pattern_id=pattern_id)
+    alert_id = str(_profile_seed(pattern_id)["alert_id"])
+    _write_quality_signals(info.run_dir, fpr=fpr, fp_verdict=fp_verdict, alert_id=alert_id)
 
     chain_status = run_subset(
         info,
@@ -265,23 +352,26 @@ def _execute_case(
     }
 
 
-def run_synthetic_pair(work_root: Path) -> dict[str, object]:
+def run_synthetic_pattern_pair(work_root: Path, *, pattern_id: str) -> dict[str, object]:
     work_root.mkdir(parents=True, exist_ok=True)
+    profile = _profile_seed(pattern_id)
     vulnerable = _execute_case(
         work_root=work_root,
-        case_id="synthetic-aeg-vulnerable",
-        firmware_bytes=b"SCOUT-SYNTHETIC-VULNERABLE-FIRMWARE",
-        handler_cls=_VulnerableLeakHandler,
+        case_id=f"synthetic-aeg-{pattern_id}-vulnerable",
+        firmware_bytes=cast(bytes, profile["vulnerable_firmware"]),
+        handler_cls=cast(type[BaseHTTPRequestHandler], profile["vulnerable_handler"]),
         fpr=0.0,
         fp_verdict="TP",
+        pattern_id=pattern_id,
     )
     patched = _execute_case(
         work_root=work_root,
-        case_id="synthetic-aeg-patched-control",
-        firmware_bytes=b"SCOUT-SYNTHETIC-PATCHED-FIRMWARE",
-        handler_cls=_PatchedNoLeakHandler,
+        case_id=f"synthetic-aeg-{pattern_id}-patched-control",
+        firmware_bytes=cast(bytes, profile["patched_firmware"]),
+        handler_cls=cast(type[BaseHTTPRequestHandler], profile["patched_handler"]),
         fpr=1.0,
         fp_verdict="FP",
+        pattern_id=pattern_id,
     )
     passed = (
         cast(dict[str, object], vulnerable["gate"]).get("passed") is True
@@ -289,6 +379,7 @@ def run_synthetic_pair(work_root: Path) -> dict[str, object]:
     )
     summary = {
         "schema_version": "synthetic-aeg-pair-v1",
+        "pattern_id": pattern_id,
         "passed": passed,
         "policy": {
             "target": "vulnerable must pass; patched/control must fail closed",
@@ -308,6 +399,10 @@ def run_synthetic_pair(work_root: Path) -> dict[str, object]:
     return summary
 
 
+def run_synthetic_pair(work_root: Path) -> dict[str, object]:
+    return run_synthetic_pattern_pair(work_root, pattern_id="memory_stateful_probe")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -321,12 +416,22 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Directory where synthetic firmware inputs, runs, and summary JSON are written.",
     )
+    parser.add_argument(
+        "--pattern",
+        choices=[
+            "memory_stateful_probe",
+            "cgi_param_cmd_injection",
+            "config_derived_cmd_injection",
+        ],
+        default="memory_stateful_probe",
+        help="Exploit Pattern RAG card profile to validate with the synthetic pair.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    summary = run_synthetic_pair(Path(args.work_root))
+    summary = run_synthetic_pattern_pair(Path(args.work_root), pattern_id=str(args.pattern))
     print(json.dumps(summary, indent=2, sort_keys=True) + "\n", end="")
     return 0 if summary.get("passed") is True else 41
 

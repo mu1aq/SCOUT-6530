@@ -101,6 +101,8 @@ python scripts/aeg_e2e_gate.py aiedge-runs/<run_id>
 
 # CI-safe AEG regression: vulnerable lab service must pass, patched control must fail closed
 python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pair
+python scripts/run_aeg_synthetic_pair.py --pattern cgi_param_cmd_injection --work-root /tmp/scout-aeg-cgi-pair
+python scripts/run_aeg_synthetic_pair.py --pattern config_derived_cmd_injection --work-root /tmp/scout-aeg-config-pair
 
 # Inspect which Exploit Pattern RAG cards have vulnerable/control evidence
 python scripts/check_exploit_pattern_evidence.py

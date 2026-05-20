@@ -101,6 +101,8 @@ python scripts/aeg_e2e_gate.py aiedge-runs/<run_id>
 
 # CI-safe AEG 회귀 테스트: 취약 lab 서비스는 pass, patched/control은 fail-closed
 python scripts/run_aeg_synthetic_pair.py --work-root /tmp/scout-aeg-synthetic-pair
+python scripts/run_aeg_synthetic_pair.py --pattern cgi_param_cmd_injection --work-root /tmp/scout-aeg-cgi-pair
+python scripts/run_aeg_synthetic_pair.py --pattern config_derived_cmd_injection --work-root /tmp/scout-aeg-config-pair
 
 # vulnerable/control 증거가 있는 Exploit Pattern RAG card 확인
 python scripts/check_exploit_pattern_evidence.py

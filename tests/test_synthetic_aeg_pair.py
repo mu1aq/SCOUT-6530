@@ -8,8 +8,10 @@ from pathlib import Path
 from types import ModuleType
 from typing import Callable, cast
 
+import pytest
 
-def _load_pair_runner() -> Callable[[Path], dict[str, object]]:
+
+def _load_pair_module() -> ModuleType:
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_aeg_synthetic_pair.py"
     spec = importlib.util.spec_from_file_location("run_aeg_synthetic_pair", script_path)
     if spec is None or spec.loader is None:
@@ -17,10 +19,27 @@ def _load_pair_runner() -> Callable[[Path], dict[str, object]]:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     loaded = cast(ModuleType, module)
+    return loaded
+
+
+def _load_pair_runner() -> Callable[[Path], dict[str, object]]:
+    loaded = _load_pair_module()
     runner = getattr(loaded, "run_synthetic_pair")
     if not callable(runner):
         raise AssertionError("run_synthetic_pair is not callable")
     return cast(Callable[[Path], dict[str, object]], runner)
+
+
+def _load_pattern_pair_runner() -> Callable[[Path, str], dict[str, object]]:
+    loaded = _load_pair_module()
+    runner = getattr(loaded, "run_synthetic_pattern_pair")
+    if not callable(runner):
+        raise AssertionError("run_synthetic_pattern_pair is not callable")
+
+    def _run(work_root: Path, pattern_id: str) -> dict[str, object]:
+        return cast(dict[str, object], runner(work_root, pattern_id=pattern_id))
+
+    return _run
 
 
 def _case(summary: dict[str, object], name: str) -> dict[str, object]:
@@ -61,10 +80,38 @@ def test_synthetic_aeg_pair_splits_vulnerable_from_patched_control(
 
     summary_path = tmp_path / "synthetic-pair" / "synthetic_aeg_pair_summary.json"
     assert summary_path.is_file()
-    persisted = cast(
-        dict[str, object], json.loads(summary_path.read_text(encoding="utf-8"))
-    )
+    persisted = cast(dict[str, object], json.loads(summary_path.read_text(encoding="utf-8")))
     assert persisted["passed"] is True
+
+
+@pytest.mark.parametrize(
+    "pattern_id,expected_reference",
+    [
+        ("cgi_param_cmd_injection", "cgi_param_cmd_injection"),
+        ("config_derived_cmd_injection", "config_derived_cmd_injection"),
+    ],
+)
+def test_synthetic_aeg_pair_validates_command_injection_profiles(
+    tmp_path: Path, pattern_id: str, expected_reference: str
+) -> None:
+    run_synthetic_pattern_pair = _load_pattern_pair_runner()
+    summary = run_synthetic_pattern_pair(tmp_path / pattern_id, pattern_id)
+
+    assert summary["passed"] is True
+    assert summary["pattern_id"] == pattern_id
+
+    vulnerable = _case(summary, "vulnerable")
+    assert _gate(vulnerable)["passed"] is True
+    assert _checks(vulnerable)["autopoc_runner_pass"] is True
+
+    autopoc_path = Path(str(vulnerable["run_dir"])) / "stages/exploit_autopoc/exploit_autopoc.json"
+    autopoc = cast(dict[str, object], json.loads(autopoc_path.read_text(encoding="utf-8")))
+    attempts = cast(list[dict[str, object]], autopoc["attempts"])
+    assert expected_reference in cast(list[str], attempts[0]["rag_references"])
+
+    patched = _case(summary, "patched_control")
+    assert _gate(patched)["passed"] is False
+    assert _checks(patched)["autopoc_runner_pass"] is False
 
 
 def test_synthetic_aeg_pair_cli_reports_passed_pair(tmp_path: Path) -> None:

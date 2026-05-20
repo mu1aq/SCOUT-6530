@@ -25,6 +25,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **Synthetic AEG vulnerable/control pair**: Added `scripts/run_aeg_synthetic_pair.py` and tests that execute the real AutoPoC runner, `poc_validation`, `verified_chain`, and FP/FPR gate against a local vulnerable service and patched/control service. The vulnerable case must pass; the patched/control case must fail closed as FP evidence.
+- **Command-injection synthetic pair profiles**: Extended the synthetic AEG pair harness to validate `cgi_param_cmd_injection` and `config_derived_cmd_injection`, including RAG reference selection and patched/control fail-closed behavior.
 - **Exploit Pattern evidence gate**: Added `memory_stateful_probe` as the first synthetic-pair-validated RAG card plus `scripts/check_exploit_pattern_evidence.py` to report which curated pattern cards have vulnerable/control evidence and which still need real pair validation.
 - **Pattern pair evidence recorder**: Added `scripts/record_pattern_pair_evidence.py` and `aiedge.exploit_rag.pair_evidence` so real known-vulnerable/patched firmware runs can be validated through the AEG E2E gate before updating pattern-card `validation_evidence`.
 
