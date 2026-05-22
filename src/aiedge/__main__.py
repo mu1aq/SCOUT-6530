@@ -6,7 +6,6 @@ Allows: python -m aiedge
 from __future__ import annotations
 
 import importlib
-import importlib.util as importlib_util
 import json
 import sys
 import time
@@ -59,20 +58,8 @@ from .quality_policy import (
     load_json_object,
     write_quality_gate,
 )
+from .real_firmware_pair_aeg import main as real_firmware_pair_aeg_main
 from .schema import JsonValue
-
-
-def _repo_script_main(script_name: str) -> Callable[[list[str] | None], int]:
-    script_path = Path(__file__).resolve().parents[2] / "scripts" / script_name
-    spec = importlib_util.spec_from_file_location(script_name.removesuffix(".py"), script_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"script not found: {script_path}")
-    module = importlib_util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    main_func = getattr(module, "main", None)
-    if not callable(main_func):
-        raise RuntimeError(f"script has no callable main(): {script_path}")
-    return cast(Callable[[list[str] | None], int], main_func)
 
 
 def _append_option(argv: list[str], flag: str, value: object) -> None:
@@ -652,8 +639,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if command == "aeg-real-pair":
         try:
-            script_main = _repo_script_main("run_real_firmware_pair_aeg.py")
-            return script_main(_aeg_real_pair_argv(args))
+            return real_firmware_pair_aeg_main(_aeg_real_pair_argv(args))
         except Exception as e:
             print(f"Fatal error: {e}", file=sys.stderr)
             return 20

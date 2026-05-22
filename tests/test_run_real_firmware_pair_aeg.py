@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
+import importlib
 import json
 import subprocess
 from pathlib import Path
@@ -11,14 +11,8 @@ from typing import Any, cast
 from aiedge.__main__ import main as aiedge_main
 
 
-def _load_script() -> ModuleType:
-    path = Path(__file__).resolve().parents[1] / "scripts" / "run_real_firmware_pair_aeg.py"
-    spec = importlib.util.spec_from_file_location("run_real_firmware_pair_aeg", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return cast(ModuleType, module)
+def _load_runner() -> ModuleType:
+    return cast(ModuleType, importlib.import_module("aiedge.real_firmware_pair_aeg"))
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
@@ -106,7 +100,7 @@ def _pair_manifest(tmp_path: Path) -> Path:
 def test_runner_reuses_existing_runs_and_emits_promotable_pair_report(
     tmp_path: Path, capsys: Any
 ) -> None:
-    module = _load_script()
+    module = _load_runner()
     manifest = _pair_manifest(tmp_path)
     vulnerable = tmp_path / "runs" / "vulnerable"
     control = tmp_path / "runs" / "control"
@@ -145,7 +139,7 @@ def test_runner_reuses_existing_runs_and_emits_promotable_pair_report(
 
 
 def test_runner_dry_run_writes_commands_and_blocks_without_run_dirs(tmp_path: Path) -> None:
-    module = _load_script()
+    module = _load_runner()
     manifest = _pair_manifest(tmp_path)
     out = tmp_path / "report.json"
 
@@ -175,7 +169,7 @@ def test_runner_dry_run_writes_commands_and_blocks_without_run_dirs(tmp_path: Pa
 def test_runner_executes_scout_for_missing_sides_and_discovers_run_dirs(
     tmp_path: Path, monkeypatch
 ) -> None:
-    module = _load_script()
+    module = _load_runner()
     manifest = _pair_manifest(tmp_path)
     vulnerable = tmp_path / "aiedge-runs" / "vulnerable"
     control = tmp_path / "aiedge-runs" / "control"
@@ -237,7 +231,7 @@ def test_runner_executes_scout_for_missing_sides_and_discovers_run_dirs(
 
 
 def test_runner_derives_quality_metrics_from_fp_verification_summary(tmp_path: Path) -> None:
-    module = _load_script()
+    module = _load_runner()
     run_dir = tmp_path / "run"
     _write_json(
         run_dir / "stages/fp_verification/verified_alerts.json",
