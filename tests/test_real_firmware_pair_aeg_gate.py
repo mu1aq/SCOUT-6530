@@ -1,20 +1,10 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 from pathlib import Path
-from types import ModuleType
-from typing import cast
 
-
-def _load_script() -> ModuleType:
-    path = Path(__file__).resolve().parents[1] / "scripts" / "check_real_firmware_pair_aeg.py"
-    spec = importlib.util.spec_from_file_location("check_real_firmware_pair_aeg", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return cast(ModuleType, module)
+from aiedge.__main__ import main as aiedge_main
+from aiedge.real_firmware_pair_gate import main as gate_main
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
@@ -101,7 +91,6 @@ def _pair_manifest(tmp_path: Path) -> Path:
 def test_real_firmware_pair_gate_promotable_when_vuln_passes_and_control_fails_closed(
     tmp_path: Path, capsys
 ) -> None:
-    module = _load_script()
     manifest = _pair_manifest(tmp_path)
     vulnerable = tmp_path / "runs" / "vulnerable"
     control = tmp_path / "runs" / "control"
@@ -109,7 +98,7 @@ def test_real_firmware_pair_gate_promotable_when_vuln_passes_and_control_fails_c
     _build_control_run(control)
     out = tmp_path / "pair-gate.json"
 
-    rc = module.main(
+    rc = gate_main(
         [
             "--pairs",
             str(manifest),
@@ -139,7 +128,6 @@ def test_real_firmware_pair_gate_promotable_when_vuln_passes_and_control_fails_c
 
 
 def test_real_firmware_pair_gate_blocks_missing_control_artifacts(tmp_path: Path) -> None:
-    module = _load_script()
     manifest = _pair_manifest(tmp_path)
     vulnerable = tmp_path / "runs" / "vulnerable"
     control = tmp_path / "runs" / "control"
@@ -148,7 +136,7 @@ def test_real_firmware_pair_gate_blocks_missing_control_artifacts(tmp_path: Path
     (control / "verified_chain" / "verified_chain.json").unlink()
     out = tmp_path / "pair-gate.json"
 
-    rc = module.main(
+    rc = gate_main(
         [
             "--pairs",
             str(manifest),
@@ -171,7 +159,6 @@ def test_real_firmware_pair_gate_blocks_missing_control_artifacts(tmp_path: Path
 
 
 def test_real_firmware_pair_gate_discovers_last_run_index(tmp_path: Path) -> None:
-    module = _load_script()
     manifest = _pair_manifest(tmp_path)
     vulnerable = tmp_path / "runs" / "vulnerable"
     control = tmp_path / "runs" / "control"
@@ -187,7 +174,7 @@ def test_real_firmware_pair_gate_discovers_last_run_index(tmp_path: Path) -> Non
         {"run_dir": str(control)},
     )
 
-    rc = module.main(
+    rc = gate_main(
         [
             "--pairs",
             str(manifest),
@@ -199,3 +186,33 @@ def test_real_firmware_pair_gate_discovers_last_run_index(tmp_path: Path) -> Non
     )
 
     assert rc == 0
+
+
+def test_real_firmware_pair_gate_product_cli_reuses_runs(tmp_path: Path, capsys) -> None:
+    manifest = _pair_manifest(tmp_path)
+    vulnerable = tmp_path / "runs" / "vulnerable"
+    control = tmp_path / "runs" / "control"
+    _build_passing_run(vulnerable)
+    _build_control_run(control)
+    out = tmp_path / "product-pair-gate.json"
+
+    rc = aiedge_main(
+        [
+            "aeg-real-pair-gate",
+            "--pairs",
+            str(manifest),
+            "--pair-id",
+            "vendor-model-cve-0000-0001",
+            "--vulnerable-run-dir",
+            str(vulnerable),
+            "--control-run-dir",
+            str(control),
+            "--out",
+            str(out),
+        ]
+    )
+
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["promotable_real_firmware_pair"] is True
+    assert json.loads(capsys.readouterr().out)["verdict"] == "promotable"

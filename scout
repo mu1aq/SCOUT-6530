@@ -20,6 +20,7 @@ Commands
   tui <run_dir>                Terminal UI dashboard
   aeg-e2e-gate                Evaluate a completed run against the AEG gate
   aeg-readiness                Audit AEG platform readiness evidence
+  aeg-real-pair-gate           Preflight a known-vulnerable/patched AEG pair
   aeg-real-pair                Run/reuse known-vulnerable/patched AEG pair
 
 Examples
@@ -30,6 +31,7 @@ Examples
   ./scout tui aiedge-runs/<run_id> -w -t 2         # TUI watch mode
   ./scout aeg-e2e-gate aiedge-runs/<run_id> --out aiedge-runs/<run_id>/aeg_e2e_gate.json
   ./scout aeg-readiness --out docs/pov/aeg_platform_readiness.json
+  ./scout aeg-real-pair-gate --pair-id netgear-r7000-cve-2017-5521
   ./scout aeg-real-pair --pair-id netgear-r7000-cve-2017-5521 --fetch --no-llm
   ./scout ti                                       # TUI interactive (latest)
   ./scout tw                                       # TUI watch (latest)

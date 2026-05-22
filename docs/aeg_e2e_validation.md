@@ -91,7 +91,7 @@ pattern card:
   --out docs/pov/<stable-pair-evidence>.json
 
 # Or reuse existing authorized lab runs and only evaluate promotion readiness.
-python scripts/check_real_firmware_pair_aeg.py \
+./scout aeg-real-pair-gate \
   --pair-id <manifest-pair-id> \
   --vulnerable-run-dir aiedge-runs/<known-vulnerable-run> \
   --control-run-dir aiedge-runs/<patched-control-run> \

@@ -60,6 +60,7 @@ from .quality_policy import (
     write_quality_gate,
 )
 from .real_firmware_pair_aeg import main as real_firmware_pair_aeg_main
+from .real_firmware_pair_gate import main as real_firmware_pair_gate_main
 from .schema import JsonValue
 
 
@@ -75,6 +76,21 @@ def _append_bool(argv: list[str], flag: str, enabled: bool) -> None:
 
 def _aeg_e2e_gate_argv(args: object) -> list[str]:
     argv: list[str] = [str(getattr(args, "run_dir"))]
+    _append_option(argv, "--out", getattr(args, "out", None))
+    _append_option(argv, "--fpr-max", getattr(args, "fpr_max", None))
+    _append_option(argv, "--min-runner-pass", getattr(args, "min_runner_pass", None))
+    return argv
+
+
+def _aeg_real_pair_gate_argv(args: object) -> list[str]:
+    argv: list[str] = []
+    _append_option(argv, "--pairs", getattr(args, "pairs", None))
+    _append_option(argv, "--pair-id", getattr(args, "pair_id", None))
+    _append_option(argv, "--results-dir", getattr(args, "results_dir", None))
+    _append_option(argv, "--vulnerable-run-dir", getattr(args, "vulnerable_run_dir", None))
+    _append_option(argv, "--control-run-dir", getattr(args, "control_run_dir", None))
+    _append_option(argv, "--patched-run-dir", getattr(args, "patched_run_dir", None))
+    _append_option(argv, "--pattern-id", getattr(args, "pattern_id", None))
     _append_option(argv, "--out", getattr(args, "out", None))
     _append_option(argv, "--fpr-max", getattr(args, "fpr_max", None))
     _append_option(argv, "--min-runner-pass", getattr(args, "min_runner_pass", None))
@@ -649,6 +665,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if command == "aeg-e2e-gate":
         try:
             return aeg_e2e_gate_main(_aeg_e2e_gate_argv(args))
+        except Exception as e:
+            print(f"Fatal error: {e}", file=sys.stderr)
+            return 20
+
+    if command == "aeg-real-pair-gate":
+        try:
+            return real_firmware_pair_gate_main(_aeg_real_pair_gate_argv(args))
         except Exception as e:
             print(f"Fatal error: {e}", file=sys.stderr)
             return 20

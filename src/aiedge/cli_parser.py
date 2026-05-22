@@ -508,6 +508,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path for readiness report JSON output artifact (default: docs/pov/aeg_platform_readiness.json).",
     )
 
+    aeg_real_pair_gate = sub.add_parser(
+        "aeg-real-pair-gate",
+        help="Preflight a known-vulnerable/patched firmware pair for real_firmware_pair AEG promotion.",
+    )
+    _ = aeg_real_pair_gate.add_argument("--pairs", default="benchmarks/pair-eval/pairs.json", metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--pair-id", required=True)
+    _ = aeg_real_pair_gate.add_argument("--results-dir", default="benchmark-results/aeg-real-pair", metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--vulnerable-run-dir", default=None, metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--control-run-dir", default=None, metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--patched-run-dir", default=None, metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--pattern-id", default=None)
+    _ = aeg_real_pair_gate.add_argument("--out", default=None, metavar="PATH")
+    _ = aeg_real_pair_gate.add_argument("--fpr-max", type=float, default=0.10)
+    _ = aeg_real_pair_gate.add_argument("--min-runner-pass", type=int, default=1)
+
     aeg_real_pair = sub.add_parser(
         "aeg-real-pair",
         help=(

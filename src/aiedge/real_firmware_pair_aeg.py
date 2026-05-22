@@ -12,6 +12,7 @@ from types import ModuleType
 from typing import Any
 
 from .pair_eval import PairSpec, load_pairs_manifest
+from .real_firmware_pair_gate import build_pair_gate_report, resolve_discovered_run_dir
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -23,15 +24,6 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         encoding="utf-8",
     )
 
-
-def _load_check_module() -> ModuleType:
-    script_path = _REPO_ROOT / "scripts" / "check_real_firmware_pair_aeg.py"
-    spec = importlib.util.spec_from_file_location("check_real_firmware_pair_aeg", script_path)
-    if spec is None or spec.loader is None:  # pragma: no cover - defensive
-        raise RuntimeError("scripts/check_real_firmware_pair_aeg.py is required")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def _load_build_chain_module() -> ModuleType:
@@ -520,7 +512,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n", end="")
                 return 47
 
-        check_module = _load_check_module()
         vulnerable_run_dir = args.vulnerable_run_dir
         control_run_dir = args.control_run_dir or args.patched_run_dir
 
@@ -580,11 +571,11 @@ def main(argv: list[str] | None = None) -> int:
                 )
         else:
             if vulnerable_run_dir is None:
-                vulnerable_run_dir = check_module._resolve_discovered_run_dir(
+                vulnerable_run_dir = resolve_discovered_run_dir(
                     results_root, pair.pair_id, "vulnerable"
                 )
             if control_run_dir is None:
-                control_run_dir = check_module._resolve_discovered_run_dir(
+                control_run_dir = resolve_discovered_run_dir(
                     results_root, pair.pair_id, "patched"
                 )
 
@@ -606,7 +597,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
 
-        pair_gate = check_module.build_pair_gate_report(
+        pair_gate = build_pair_gate_report(
             pair=pair,
             vulnerable_run_dir=vulnerable_run_dir,
             control_run_dir=control_run_dir,
