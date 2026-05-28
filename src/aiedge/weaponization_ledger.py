@@ -111,8 +111,9 @@ def _bundle_reliability(bundle: dict[str, Any]) -> dict[str, int | str]:
     }
 
 
-def _execution_summary(paths: list[Path]) -> dict[str, object]:
+def _execution_summary(paths: list[Path], *, expected_chain_id: str = "") -> dict[str, object]:
     bundles: list[dict[str, object]] = []
+    ignored_bundles: list[dict[str, object]] = []
     total_attempted = 0
     total_passed = 0
     total_failed = 0
@@ -121,6 +122,17 @@ def _execution_summary(paths: list[Path]) -> dict[str, object]:
     chain_ids: list[str] = []
     for path in paths:
         payload = _load_json(path) or {}
+        chain_id = payload.get("chain_id")
+        normalized_chain_id = chain_id.strip() if isinstance(chain_id, str) else ""
+        if expected_chain_id and normalized_chain_id and normalized_chain_id != expected_chain_id:
+            ignored_bundles.append(
+                {
+                    "artifact": _path_evidence(path),
+                    "chain_id": normalized_chain_id,
+                    "reason": "non_plan_chain",
+                }
+            )
+            continue
         reliability = _bundle_reliability(payload)
         total_attempted += int(reliability.get("attempted", 0))
         total_passed += int(reliability.get("passed", 0))
@@ -130,13 +142,12 @@ def _execution_summary(paths: list[Path]) -> dict[str, object]:
         cleanup_error = runtime.get("cleanup_error")
         if isinstance(cleanup_error, str) and cleanup_error.strip():
             cleanup_errors.append(cleanup_error.strip())
-        chain_id = payload.get("chain_id")
-        if isinstance(chain_id, str) and chain_id.strip():
-            chain_ids.append(chain_id.strip())
+        if normalized_chain_id:
+            chain_ids.append(normalized_chain_id)
         bundles.append(
             {
                 "artifact": _path_evidence(path),
-                "chain_id": chain_id if isinstance(chain_id, str) else "",
+                "chain_id": normalized_chain_id,
                 "schema_version": payload.get("schema_version"),
                 "reliability": reliability,
                 "policy": _as_dict(payload.get("policy")),
@@ -146,6 +157,7 @@ def _execution_summary(paths: list[Path]) -> dict[str, object]:
         "bundles": bundles,
         "chain_ids": sorted(set(chain_ids)),
         "cleanup_errors": cleanup_errors,
+        "ignored_bundles": ignored_bundles,
         "schema_ok": schema_ok and bool(paths),
         "total_attempted": total_attempted,
         "total_passed": total_passed,
@@ -219,16 +231,16 @@ def build_weaponization_ledger(
     plan = _load_required_json(plan_path)
     preflight = _load_required_json(preflight_path)
     readiness = _load_required_json(readiness_path)
-    evidence_paths = _evidence_paths(run_dir, execution_evidence_paths)
-    execution = _execution_summary(evidence_paths)
     repro_required = _plan_repro_required(plan)
+    plan_binding = _as_dict(plan.get("binding"))
+    chain_id = str(plan_binding.get("scout_chain_id") or "").strip()
+    evidence_paths = _evidence_paths(run_dir, execution_evidence_paths)
+    execution = _execution_summary(evidence_paths, expected_chain_id=chain_id)
     cleanup_log = _path_evidence(cleanup_log_path) if cleanup_log_path is not None else {}
     cleanup_log_present = bool(cleanup_log.get("exists"))
     cleanup_errors = _as_list(execution.get("cleanup_errors"))
     approval = _approval_summary(approval_path)
 
-    plan_binding = _as_dict(plan.get("binding"))
-    chain_id = str(plan_binding.get("scout_chain_id") or "").strip()
     observed_chains = [str(item) for item in _as_list(execution.get("chain_ids"))]
     total_passed = execution.get("total_passed")
     total_failed = execution.get("total_failed")
@@ -258,9 +270,13 @@ def build_weaponization_ledger(
         ),
         _check(
             "execution_evidence_present",
-            bool(evidence_paths) and bool(execution.get("schema_ok")),
+            bool(_as_list(execution.get("bundles"))) and bool(execution.get("schema_ok")),
             "At least one exploit-evidence-v1 bundle must be recorded; private source is not copied into the ledger.",
-            evidence={"bundle_count": len(evidence_paths), "bundles": execution.get("bundles")},
+            evidence={
+                "bundle_count": len(_as_list(execution.get("bundles"))),
+                "bundles": execution.get("bundles"),
+                "ignored_bundles": execution.get("ignored_bundles"),
+            },
         ),
         _check(
             "execution_chain_bound",

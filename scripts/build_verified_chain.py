@@ -258,7 +258,17 @@ def _extract_verifier_reason(exc: Exception) -> str:
 
 
 def _status_3_of_3(attempts: list[dict[str, object]]) -> bool:
-    return len(attempts) == 3 and all(item.get("status") == "pass" for item in attempts)
+    by_bundle: dict[str, list[dict[str, object]]] = {}
+    for attempt in attempts:
+        bundle = str(attempt.get("bundle_dir") or "")
+        if not bundle:
+            continue
+        by_bundle.setdefault(bundle, []).append(attempt)
+    return any(
+        len(bundle_attempts) >= 3
+        and all(item.get("status") == "pass" for item in bundle_attempts)
+        for bundle_attempts in by_bundle.values()
+    )
 
 
 def _write_contract(path: Path, contract: dict[str, object]) -> None:

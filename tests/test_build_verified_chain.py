@@ -288,6 +288,68 @@ def test_build_verified_chain_pass_path(tmp_path: Path) -> None:
     assert verify_res.stdout.startswith("[OK] verified_chain contract verified:")
 
 
+
+def test_build_verified_chain_accepts_one_passing_bundle_among_failed_candidates(
+    tmp_path: Path,
+) -> None:
+    run_dir = _write_fixture(
+        tmp_path,
+        pcap_destinations=["192.168.1.50"],
+        boot_flaky=False,
+    )
+    failed_dir = run_dir / "exploits" / "chain_failed_candidate"
+    failed_dir.mkdir(parents=True, exist_ok=True)
+    attempts = []
+    logs = []
+    for idx in range(1, 4):
+        log_path = failed_dir / f"execution_log_{idx}.txt"
+        log_path.write_text("status=fail\nproof_type=vulnerability_trigger\n", encoding="utf-8")
+        logs.append(log_path.relative_to(run_dir).as_posix())
+        attempts.append(
+            {
+                "attempt": idx,
+                "status": "fail",
+                "timestamp": f"2026-02-17T00:1{idx}:00Z",
+                "proof_type": "vulnerability_trigger",
+                "proof_evidence": "trigger_observed=0 readback_hash=none",
+                "reason_code": "attempt_fail",
+            }
+        )
+    (failed_dir / "network_capture.pcap").write_bytes(_pcap_with_destinations(["192.168.1.99"]))
+    (failed_dir / "evidence_bundle.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "exploit-evidence-v1",
+                "chain_id": "failed_candidate",
+                "generated_at": "2026-02-17T00:10:00Z",
+                "reproducibility": {
+                    "attempted": 3,
+                    "passed": 0,
+                    "reason_code": "repro_fail",
+                    "requested": 3,
+                    "status": "fail",
+                },
+                "attempts": attempts,
+                "artifacts": {
+                    "execution_logs": logs,
+                    "network_capture": "exploits/chain_failed_candidate/network_capture.pcap",
+                    "poc_sha256": "exploits/chain_demo/poc_sha256.txt",
+                },
+                "pcap": {"status": "captured", "reason_code": "pcap_placeholder_unavailable"},
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    res = _run_builder(run_dir)
+    assert res.returncode == 0
+    verdict = cast(dict[str, object], _load_contract(run_dir)["verdict"])
+    assert verdict["state"] == "pass"
+    assert verdict["reason_codes"] == ["isolation_verified", "repro_3_of_3"]
+
 def test_build_verified_chain_defaults_execution_provenance_for_legacy_manifest(
     tmp_path: Path,
 ) -> None:

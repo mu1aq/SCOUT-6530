@@ -489,7 +489,7 @@ class PocValidationStage:
                     }
                 )
 
-        all_chains_consistent = bool(reproducibility_results) and all(
+        any_chain_consistent = any(
             str(cast(dict[str, object], r).get("status", "")) == "consistent"
             for r in reproducibility_results
         )
@@ -504,7 +504,7 @@ class PocValidationStage:
         )
 
         verification_reason_codes: list[str] = []
-        if all_chains_consistent and total_checked >= 1:
+        if any_chain_consistent and total_checked >= 1:
             verification_reason_codes.append("repro_3_of_3")
         elif any_chain_inconsistent:
             verification_reason_codes.append("poc_repro_failed")

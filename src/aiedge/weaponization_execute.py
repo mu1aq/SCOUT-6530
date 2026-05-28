@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 import json
+import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
 from typing import Any, cast
 
 from .controlled_weaponization import _as_dict, _load_json
@@ -65,7 +68,20 @@ def _precheck(
 
 
 def _run_private_plugin(run_dir: Path, exploit_dir: Path, chain_id: str, repro: int) -> int:
-    runner_mod = importlib.import_module("exploit_runner")
+    repo_root = Path(__file__).resolve().parents[2]
+    repo_root_str = str(repo_root)
+    if repo_root_str not in sys.path:
+        sys.path.insert(0, repo_root_str)
+    try:
+        runner_mod = importlib.import_module("exploit_runner")
+    except ModuleNotFoundError:
+        runner_path = repo_root / "exploit_runner.py"
+        spec = importlib.util.spec_from_file_location("_scout_weaponization_exploit_runner", runner_path)
+        if spec is None or spec.loader is None:
+            raise
+        runner_mod = importlib.util.module_from_spec(spec)
+        sys.modules["_scout_weaponization_exploit_runner"] = runner_mod
+        spec.loader.exec_module(cast(ModuleType, runner_mod))
     run_exploit = cast(Callable[..., int], getattr(runner_mod, "run_exploit"))
     return run_exploit(run_dir=run_dir, exploit_dir=exploit_dir, chain_id=chain_id, repro=repro)
 

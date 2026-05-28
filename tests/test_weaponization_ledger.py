@@ -133,7 +133,14 @@ def _package_manifest(path: Path) -> None:
     )
 
 
-def _evidence_bundle(path: Path, *, passed: int = 3, attempted: int = 3, cleanup_error: str = "") -> None:
+def _evidence_bundle(
+    path: Path,
+    *,
+    chain_id: str = "chain-http-marker-read",
+    passed: int = 3,
+    attempted: int = 3,
+    cleanup_error: str = "",
+) -> None:
     attempts = [
         {"attempt": idx, "status": "pass" if idx <= passed else "fail", "proof_type": "arbitrary_read"}
         for idx in range(1, attempted + 1)
@@ -142,7 +149,7 @@ def _evidence_bundle(path: Path, *, passed: int = 3, attempted: int = 3, cleanup
         path,
         {
             "schema_version": "exploit-evidence-v1",
-            "chain_id": "chain-http-marker-read",
+            "chain_id": chain_id,
             "reproducibility": {
                 "attempted": attempted,
                 "passed": passed,
@@ -248,6 +255,29 @@ def test_weaponization_ledger_passes_l6_without_engagement_approval(tmp_path: Pa
 
     assert payload["passed"] is True
     assert payload["promotion_level"] == "L6_EXECUTION_LEDGER_READY"
+
+
+def test_weaponization_ledger_ignores_failed_non_plan_candidate_bundles(tmp_path: Path) -> None:
+    run_dir, _, plan_path, preflight_path, readiness_path, evidence_path, cleanup_log = _build_l6_artifacts(tmp_path)
+    failed_candidate = run_dir / "exploits/chain_failed_candidate/evidence_bundle.json"
+    _evidence_bundle(failed_candidate, chain_id="failed-candidate", passed=0, attempted=3)
+
+    payload = build_weaponization_ledger(
+        run_dir,
+        plan_path=plan_path,
+        preflight_path=preflight_path,
+        readiness_path=readiness_path,
+        execution_evidence_paths=[failed_candidate, evidence_path],
+        cleanup_log_path=cleanup_log,
+    )
+
+    assert payload["passed"] is True
+    assert payload["promotion_level"] == "L6_EXECUTION_LEDGER_READY"
+    reliability = payload["reliability"]
+    assert isinstance(reliability, dict)
+    assert reliability["attempted"] == 3
+    assert reliability["passed"] == 3
+    assert reliability["failed"] == 0
 
 
 def test_weaponization_ledger_blocks_when_reliability_does_not_meet_plan(tmp_path: Path) -> None:

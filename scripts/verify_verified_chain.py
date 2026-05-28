@@ -369,6 +369,8 @@ def _verify_verified_chain(run_dir: Path) -> None:
         )
     attempts = cast(list[object], attempts_any)
     pass_attempt_count = 0
+    pass_attempts_by_bundle: dict[str, int] = {}
+    total_attempts_by_bundle: dict[str, int] = {}
     for idx, attempt_any in enumerate(attempts):
         attempt = _as_object(attempt_any, path=f"verified_chain.attempts[{idx}]")
         _ = _require_int(attempt, "attempt", path=f"verified_chain.attempts[{idx}]")
@@ -386,6 +388,9 @@ def _verify_verified_chain(run_dir: Path) -> None:
         bundle_dir = _require_str(
             attempt, "bundle_dir", path=f"verified_chain.attempts[{idx}]"
         )
+        total_attempts_by_bundle[bundle_dir] = total_attempts_by_bundle.get(bundle_dir, 0) + 1
+        if attempt_state == "pass":
+            pass_attempts_by_bundle[bundle_dir] = pass_attempts_by_bundle.get(bundle_dir, 0) + 1
         bundle_candidate = _validate_linked_path(
             run_dir,
             bundle_dir,
@@ -420,15 +425,14 @@ def _verify_verified_chain(run_dir: Path) -> None:
         )
 
     if state == "pass":
-        if len(attempts) != 3:
+        has_bundle_3_of_3 = any(
+            total_attempts_by_bundle.get(bundle_dir) == 3 and pass_count == 3
+            for bundle_dir, pass_count in pass_attempts_by_bundle.items()
+        )
+        if not has_bundle_3_of_3:
             raise VerificationError(
                 "invalid_contract",
-                "pass verdict requires exactly 3 attempts",
-            )
-        if pass_attempt_count != 3:
-            raise VerificationError(
-                "invalid_contract",
-                "pass verdict requires 3/3 passing attempts",
+                "pass verdict requires at least one bundle with 3/3 passing attempts",
             )
 
     _ = _validate_evidence_refs(
