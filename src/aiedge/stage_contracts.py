@@ -594,6 +594,302 @@ def _validate_graph_json(path: Path, payload: dict[str, object], errors: list[st
         _append_error(errors, path, "edges must be list")
 
 
+def _is_plain_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_string_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _require_non_empty_string(
+    obj: Mapping[str, object], key: str, *, path: Path, errors: list[str]
+) -> str:
+    value = obj.get(key)
+    if not isinstance(value, str) or not value.strip():
+        _append_error(errors, path, f"{key} must be non-empty string")
+        return ""
+    return value.strip()
+
+
+def _validate_policy_strings(
+    value: object,
+    *,
+    path: Path,
+    field: str,
+    errors: list[str],
+    require_public_poc_boundary: bool = False,
+) -> None:
+    if not _is_string_list(value) or not cast(list[object], value):
+        _append_error(errors, path, f"{field} must be a non-empty list[str]")
+        return
+    if require_public_poc_boundary and not any(
+        "public poc" in cast(str, item).lower() or "raw public poc" in cast(str, item).lower()
+        for item in cast(list[object], value)
+    ):
+        _append_error(
+            errors,
+            path,
+            f"{field} must explicitly prohibit raw/public PoC reuse",
+        )
+
+
+def _validate_vuln_list_enrichment(
+    path: Path, payload: Mapping[str, object], errors: list[str], *, field: str
+) -> None:
+    if payload.get("schema_version") != "scout-vuln-list-enrichment-v1":
+        _append_error(
+            errors,
+            path,
+            f"{field}.schema_version must equal 'scout-vuln-list-enrichment-v1'",
+        )
+    if payload.get("metadata_only") is not True:
+        _append_error(errors, path, f"{field}.metadata_only must be true")
+    if not isinstance(payload.get("safety_note"), str) or "proof" not in str(
+        payload.get("safety_note", "")
+    ).lower():
+        _append_error(errors, path, f"{field}.safety_note must state the proof boundary")
+    _validate_policy_strings(
+        payload.get("allowed_use"),
+        path=path,
+        field=f"{field}.allowed_use",
+        errors=errors,
+    )
+    _validate_policy_strings(
+        payload.get("forbidden_use"),
+        path=path,
+        field=f"{field}.forbidden_use",
+        errors=errors,
+        require_public_poc_boundary=True,
+    )
+    cpe_any = payload.get("cpe")
+    if not isinstance(cpe_any, list) or not all(
+        isinstance(item, str) and item.startswith("cpe:2.3:")
+        for item in cast(list[object], cpe_any)
+    ):
+        _append_error(errors, path, f"{field}.cpe must be a list of CPE 2.3 strings")
+    refs_any = payload.get("references")
+    if not isinstance(refs_any, list):
+        _append_error(errors, path, f"{field}.references must be list")
+    else:
+        for idx, ref_any in enumerate(cast(list[object], refs_any)):
+            if not isinstance(ref_any, dict):
+                _append_error(errors, path, f"{field}.references[{idx}] must be object")
+                continue
+            ref = cast(dict[str, object], ref_any)
+            if not isinstance(ref.get("url"), str) or not str(ref.get("url", "")).strip():
+                _append_error(
+                    errors,
+                    path,
+                    f"{field}.references[{idx}].url must be non-empty string",
+                )
+            if not _is_string_list(ref.get("tags")):
+                _append_error(errors, path, f"{field}.references[{idx}].tags must be list[str]")
+
+
+def _validate_external_intel_candidate(
+    path: Path, candidate: Mapping[str, object], errors: list[str], *, field: str
+) -> None:
+    _require_non_empty_string(candidate, "cve", path=path, errors=errors)
+    contract_any = candidate.get("extraction_contract")
+    if not isinstance(contract_any, dict):
+        _append_error(errors, path, f"{field}.extraction_contract must be object")
+    else:
+        contract = cast(dict[str, object], contract_any)
+        _validate_policy_strings(
+            contract.get("allowed_use"),
+            path=path,
+            field=f"{field}.extraction_contract.allowed_use",
+            errors=errors,
+        )
+        _validate_policy_strings(
+            contract.get("forbidden_use"),
+            path=path,
+            field=f"{field}.extraction_contract.forbidden_use",
+            errors=errors,
+            require_public_poc_boundary=True,
+        )
+    vuln_any = candidate.get("vuln_list_update")
+    if vuln_any is not None:
+        if not isinstance(vuln_any, dict):
+            _append_error(errors, path, f"{field}.vuln_list_update must be object when present")
+        else:
+            _validate_vuln_list_enrichment(
+                path,
+                cast(dict[str, object], vuln_any),
+                errors,
+                field=f"{field}.vuln_list_update",
+            )
+
+
+def _validate_autopoc_seed_candidate(
+    path: Path, seed: Mapping[str, object], errors: list[str], *, field: str
+) -> None:
+    for key in (
+        "candidate_id",
+        "chain_id",
+        "source",
+        "priority",
+        "summary",
+        "attack_hypothesis",
+        "cve_id",
+        "sink",
+        "external_intel_candidate_ref",
+    ):
+        _require_non_empty_string(seed, key, path=path, errors=errors)
+    if seed.get("source") != "exploit_intel":
+        _append_error(errors, path, f"{field}.source must equal 'exploit_intel'")
+    score = seed.get("score")
+    if not isinstance(score, (int, float)) or isinstance(score, bool):
+        _append_error(errors, path, f"{field}.score must be numeric")
+    for key in ("families", "expected_impact", "validation_plan", "channels"):
+        if not isinstance(seed.get(key), list):
+            _append_error(errors, path, f"{field}.{key} must be list")
+    evidence_refs = seed.get("evidence_refs")
+    if not isinstance(evidence_refs, list):
+        _append_error(errors, path, f"{field}.evidence_refs must be list")
+    else:
+        refs = cast(list[object], evidence_refs)
+        _validate_path_list(
+            refs,
+            path=path,
+            field=f"{field}.evidence_refs",
+            errors=errors,
+        )
+        ref = seed.get("external_intel_candidate_ref")
+        if isinstance(ref, str) and ref not in refs:
+            _append_error(
+                errors,
+                path,
+                f"{field}.evidence_refs must include external_intel_candidate_ref",
+            )
+        if not any(
+            isinstance(item, str) and item.startswith("stages/cve_scan/")
+            for item in refs
+        ):
+            _append_error(
+                errors,
+                path,
+                f"{field}.evidence_refs must include stages/cve_scan evidence",
+            )
+    ref = seed.get("external_intel_candidate_ref")
+    if not _is_run_relative_path(ref):
+        _append_error(
+            errors,
+            path,
+            f"{field}.external_intel_candidate_ref must be run-relative path string",
+        )
+    plan_ir = seed.get("plan_ir")
+    if not isinstance(plan_ir, dict):
+        _append_error(errors, path, f"{field}.plan_ir must be object")
+    else:
+        claim_boundary = cast(dict[str, object], plan_ir).get("claim_boundary")
+        if not isinstance(claim_boundary, str) or "firmware-local" not in claim_boundary:
+            _append_error(
+                errors,
+                path,
+                f"{field}.plan_ir.claim_boundary must bind claims to firmware-local evidence",
+            )
+    _validate_policy_strings(
+        seed.get("forbidden_reuse"),
+        path=path,
+        field=f"{field}.forbidden_reuse",
+        errors=errors,
+        require_public_poc_boundary=True,
+    )
+    validation_plan = seed.get("validation_plan")
+    if isinstance(validation_plan, list) and not any(
+        isinstance(item, str) and "firmware" in item.lower()
+        for item in validation_plan
+    ):
+        _append_error(
+            errors,
+            path,
+            f"{field}.validation_plan must require firmware evidence binding",
+        )
+
+
+def _validate_exploit_intel_json(
+    path: Path, payload: dict[str, object], errors: list[str]
+) -> None:
+    if payload.get("schema_version") != "exploit-intel-v1":
+        _append_error(errors, path, "schema_version must equal 'exploit-intel-v1'")
+    if payload.get("status") not in _STAGE_STATUSES:
+        _append_error(errors, path, f"status must be one of {sorted(_STAGE_STATUSES)}")
+    if not isinstance(payload.get("generated_at"), str):
+        _append_error(errors, path, "generated_at must be string")
+    for key in ("sources", "source_urls", "limitations"):
+        if not _is_string_list(payload.get(key)):
+            _append_error(errors, path, f"{key} must be list[str]")
+    safety_note = payload.get("safety_note")
+    if not isinstance(safety_note, str) or "metadata-only" not in safety_note.lower():
+        _append_error(errors, path, "safety_note must state metadata-only boundary")
+    summary = _require_dict(payload, "summary", path=path, errors=errors)
+    if summary is not None:
+        for key in (
+            "cves_considered",
+            "candidate_count",
+            "autopoc_seed_count",
+            "poc_repo_total",
+            "vuln_list_enriched",
+            "failures",
+        ):
+            if not _is_plain_int(summary.get(key)):
+                _append_error(errors, path, f"summary.{key} must be int")
+    candidates = _require_list(payload, "candidates", path=path, errors=errors)
+    if candidates is not None:
+        for idx, candidate_any in enumerate(cast(list[object], candidates)):
+            if not isinstance(candidate_any, dict):
+                _append_error(errors, path, f"candidates[{idx}] must be object")
+                continue
+            _validate_external_intel_candidate(
+                path,
+                cast(dict[str, object], candidate_any),
+                errors,
+                field=f"candidates[{idx}]",
+            )
+    seeds = _require_list(payload, "autopoc_seeds", path=path, errors=errors)
+    if seeds is not None:
+        for idx, seed_any in enumerate(cast(list[object], seeds)):
+            if not isinstance(seed_any, dict):
+                _append_error(errors, path, f"autopoc_seeds[{idx}] must be object")
+                continue
+            _validate_autopoc_seed_candidate(
+                path,
+                cast(dict[str, object], seed_any),
+                errors,
+                field=f"autopoc_seeds[{idx}]",
+            )
+
+
+def _validate_exploit_intel_autopoc_seeds_json(
+    path: Path, payload: dict[str, object], errors: list[str]
+) -> None:
+    if payload.get("schema_version") != "exploit-intel-autopoc-seeds-v1":
+        _append_error(
+            errors,
+            path,
+            "schema_version must equal 'exploit-intel-autopoc-seeds-v1'",
+        )
+    if payload.get("source") != "exploit_intel":
+        _append_error(errors, path, "source must equal 'exploit_intel'")
+    if not isinstance(payload.get("generated_at"), str):
+        _append_error(errors, path, "generated_at must be string")
+    candidates = _require_list(payload, "candidates", path=path, errors=errors)
+    if candidates is None:
+        return
+    for idx, candidate_any in enumerate(cast(list[object], candidates)):
+        if not isinstance(candidate_any, dict):
+            _append_error(errors, path, f"candidates[{idx}] must be object")
+            continue
+        _validate_autopoc_seed_candidate(
+            path,
+            cast(dict[str, object], candidate_any),
+            errors,
+            field=f"candidates[{idx}]",
+        )
+
+
 _ARTIFACT_VALIDATORS: dict[str, Callable[[Path, dict[str, object], list[str]], None]] = {
     "attribution.json": _validate_attribution_json,
     "tools.json": _validate_tools_json,
@@ -629,6 +925,8 @@ _ARTIFACT_VALIDATORS: dict[str, Callable[[Path, dict[str, object], list[str]], N
     "sbom.json": _validate_sbom_json,
     "cpe_index.json": _validate_cpe_index_json,
     "cve_matches.json": _validate_cve_matches_json,
+    "exploit_intel.json": _validate_exploit_intel_json,
+    "autopoc_seeds.json": _validate_exploit_intel_autopoc_seeds_json,
     "alerts.json": lambda p, d, e: _validate_stage_payload_with_status(p, d, e, list_field="alerts", require_summary=False),
     "taint_results.json": lambda p, d, e: _validate_stage_payload_with_status(p, d, e, list_field="results", require_summary=False),
     "verified_alerts.json": lambda p, d, e: _validate_stage_payload_with_status(p, d, e, list_field="verified_alerts", require_summary=False),
