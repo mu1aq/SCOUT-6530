@@ -129,3 +129,60 @@ def test_validate_stage_outputs_fails_when_poc_validation_shape_is_invalid(
     combined = res.stdout + res.stderr
     assert "poc_validation.json" in combined
     assert "checks" in combined
+
+
+def test_validate_stage_outputs_fails_when_exploit_intel_boundary_is_missing(
+    tmp_path: Path,
+) -> None:
+    run_dir = _create_sample_run(tmp_path)
+    exploit_intel_path = run_dir / "stages" / "exploit_intel" / "exploit_intel.json"
+    exploit_intel = _load_json(exploit_intel_path)
+    exploit_intel["safety_note"] = "public advisories are proof"
+    _write_json(exploit_intel_path, exploit_intel)
+
+    res = _run_validator(run_dir)
+
+    assert res.returncode != 0
+    combined = res.stdout + res.stderr
+    assert "exploit_intel.json" in combined
+    assert "metadata-only" in combined.lower()
+
+
+def test_validate_stage_outputs_fails_when_autopoc_seed_can_reuse_public_poc(
+    tmp_path: Path,
+) -> None:
+    run_dir = _create_sample_run(tmp_path)
+    seeds_path = run_dir / "stages" / "exploit_intel" / "autopoc_seeds.json"
+    seeds = _load_json(seeds_path)
+    seeds["candidates"] = [
+        {
+            "candidate_id": "external-intel:CVE-2023-1389",
+            "chain_id": "external_intel_CVE_2023_1389_cmd_injection",
+            "source": "exploit_intel",
+            "priority": "high",
+            "score": 0.86,
+            "families": ["cmd_injection"],
+            "summary": "metadata seed",
+            "attack_hypothesis": "adapt only with firmware-local evidence",
+            "expected_impact": ["cmd_injection"],
+            "validation_plan": [
+                "bind CVE/advisory structure to firmware-local evidence before probing"
+            ],
+            "evidence_refs": ["stages/cve_scan/cve_matches.json"],
+            "cve_id": "CVE-2023-1389",
+            "sink": "firmware-local web command sink",
+            "channels": [],
+            "plan_ir": {"claim_boundary": "firmware-local evidence only"},
+            "external_intel_candidate_ref": "/tmp/public-poc.json",
+            "forbidden_reuse": [],
+        }
+    ]
+    _write_json(seeds_path, seeds)
+
+    res = _run_validator(run_dir)
+
+    assert res.returncode != 0
+    combined = res.stdout + res.stderr
+    assert "autopoc_seeds.json" in combined
+    assert "forbidden_reuse" in combined
+    assert "external_intel_candidate_ref" in combined
